@@ -3,7 +3,7 @@ FROM gitpod/workspace-full
 USER root
 
 USER gitpod
-RUN npm install -g aws-cdk
+RUN npm install -g aws-cdk && yarn
 
 # Install custom tools, runtime, etc. using apt-get
 # For example, the command below would install "bastet" - a command line tetris clone:

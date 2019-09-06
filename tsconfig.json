@@ -18,6 +18,6 @@
     "experimentalDecorators": true,
     "strictPropertyInitialization":false
   },
-  "exclude": ["cdk.out"]
+  "exclude": ["bin/cdk.out"]
 }
 

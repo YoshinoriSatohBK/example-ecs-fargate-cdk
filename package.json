@@ -14,7 +14,11 @@
     "typescript": "^3.3.3333"
   },
   "dependencies": {
+    "@aws-cdk/aws-codepipeline-actions": "^1.7.0",
     "@aws-cdk/aws-ecs": "^1.6.1",
+    "@aws-cdk/aws-ecs-patterns": "^1.6.1",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^1.6.1",
+    "@aws-cdk/aws-elasticloadbalancingv2-targets": "^1.6.1",
     "@aws-cdk/aws-rds": "^1.5.0",
     "@aws-cdk/aws-sns": "^1.5.0",
     "@aws-cdk/aws-sns-subscriptions": "^1.5.0",

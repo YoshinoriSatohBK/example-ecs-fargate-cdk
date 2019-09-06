@@ -1,8 +1,6 @@
 import cdk = require('@aws-cdk/core');
 import { Construct } from '@aws-cdk/core';
 import ec2 = require('@aws-cdk/aws-ec2');
-import rds = require('@aws-cdk/aws-rds');
-import { ParameterGroup } from '@aws-cdk/aws-rds';
 
 export interface VpcProps {
   cidr: string;
@@ -20,13 +18,18 @@ export class Vpc extends Construct {
       subnetConfiguration: [
         {
           cidrMask: 24,
-          name: 'Public',
+          name: 'Ingress',
           subnetType: ec2.SubnetType.PUBLIC,
         },
         {
           cidrMask: 24,
-          name: 'Private',
+          name: 'Application',
           subnetType: ec2.SubnetType.PRIVATE,
+        },
+        {
+          cidrMask: 28,
+          name: 'Database',
+          subnetType: ec2.SubnetType.ISOLATED,
         }
       ],
     });

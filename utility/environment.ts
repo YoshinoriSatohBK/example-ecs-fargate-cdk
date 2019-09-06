@@ -9,4 +9,3 @@ export class Environment {
       return this.getEnv(node) === 'prod';
   }
 }
-

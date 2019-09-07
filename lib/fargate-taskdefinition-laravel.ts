@@ -28,15 +28,16 @@ export class FargateTaskDefinitionLaravel extends Construct {
 
   constructor(parent: Construct, name: string, props: FargateTaskDefinitionLaravelProps) {
     super(parent, name);
+    const ctx = parent.node.tryGetContext('ctx');
 
     // Task Definition
-    this.taskDefinition = new ecs.FargateTaskDefinition(this, 'FargateTaskDefinition', {
+    this.taskDefinition = new ecs.FargateTaskDefinition(this, ctx.cid('FargateTaskDefinition'), {
       memoryLimitMiB: 512,
       cpu: 256
     });
 
     // Add laravel container images to Tast Definition
-    const ecrRepositoryNginx = ecr.Repository.fromRepositoryName(parent, 'LaravelNginxEcrRepository', props.conf.ecr.nginx.repositoryName);
+    const ecrRepositoryNginx = ecr.Repository.fromRepositoryName(parent, ctx.cid('LaravelNginxEcrRepository'), props.conf.ecr.nginx.repositoryName);
     const containerDefinitionlNginx = this.taskDefinition.addContainer("ContainerDefinitionlNginx", {
       image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryNginx, props.conf.ecr.nginx.tag)
     });
@@ -47,7 +48,7 @@ export class FargateTaskDefinitionLaravel extends Construct {
     });
 
     // Add nginx container images to Tast Definition
-    const ecrRepositoryLaravel = ecr.Repository.fromRepositoryName(parent, 'LravelAppEcrRepository', props.conf.ecr.laravel.repositoryName);
+    const ecrRepositoryLaravel = ecr.Repository.fromRepositoryName(parent, ctx.cid('LravelAppEcrRepository'), props.conf.ecr.laravel.repositoryName);
     const containerDefinitionLaravel = this.taskDefinition.addContainer("ContainerDefinitionLaravel", {
       image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryLaravel, props.conf.ecr.laravel.tag),
       workingDirectory: '/var/www/html',

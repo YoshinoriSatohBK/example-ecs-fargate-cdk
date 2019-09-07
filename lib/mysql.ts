@@ -1,6 +1,5 @@
 import cdk = require('@aws-cdk/core');
 import { Construct, SecretValue } from '@aws-cdk/core';
-import { Environment } from '../utility/environment';
 import ec2 = require('@aws-cdk/aws-ec2');
 import rds = require('@aws-cdk/aws-rds');
 
@@ -18,20 +17,21 @@ export class Mysql extends Construct {
 
   constructor(parent: Construct, name: string, props: RdsProps) {
     super(parent, name);
+    const ctx = parent.node.tryGetContext('ctx');
 
-    const optionGroup = new rds.OptionGroup(parent, 'OptionGroup', {
+    const optionGroup = new rds.OptionGroup(parent, ctx.cid('MysqlOptionGroup'), {
       engine: rds.DatabaseInstanceEngine.MYSQL,
       majorEngineVersion: '5.7',
       configurations: []
     });
 
-    const parameterGroup = new rds.ParameterGroup(parent, 'ParameterGroup', {
+    const parameterGroup = new rds.ParameterGroup(parent, ctx.cid('MysqlParameterGroup'), {
       family: 'mysql5.7',
       parameters: {}
     });
 
-    if (Environment.isProd(parent.node)) {
-      this.databaseInstance = new rds.DatabaseInstance(parent, 'Instance', {
+    if (ctx.isProd()) {
+      this.databaseInstance = new rds.DatabaseInstance(parent, ctx.cid('MysqlInstance'), {
         instanceIdentifier: props.appName,
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
@@ -55,7 +55,7 @@ export class Mysql extends Construct {
       });
 
     } else {
-      this.databaseInstance = new rds.DatabaseInstance(parent, 'Instance', {
+      this.databaseInstance = new rds.DatabaseInstance(parent, ctx.cid('MysqlInstance'), {
         instanceIdentifier: props.appName,
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),

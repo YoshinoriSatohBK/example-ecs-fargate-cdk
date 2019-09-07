@@ -11,8 +11,9 @@ export class Vpc extends Construct {
 
   constructor(parent: Construct, name: string, props: VpcProps) {
     super(parent, name);
+    const ctx = parent.node.tryGetContext('ctx');
 
-    this.vpc = new ec2.Vpc(parent, 'VPC', {
+    this.vpc = new ec2.Vpc(parent, ctx.cid('VPC'), {
       cidr: props.cidr,
       maxAzs: 2,
       subnetConfiguration: [

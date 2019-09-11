@@ -1,6 +1,7 @@
 #!/bin/sh
 
 npm run build
+
 cdk deploy \
   -a "npx ts-node bin/laravel.ts" \
   -c appName=laravel-app \

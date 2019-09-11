@@ -19,19 +19,19 @@ export class Mysql extends Construct {
     super(parent, name);
     const ctx = parent.node.tryGetContext('ctx');
 
-    const optionGroup = new rds.OptionGroup(parent, ctx.cid('MysqlOptionGroup'), {
+    const optionGroup = new rds.OptionGroup(parent, 'MysqlOptionGroup', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
       majorEngineVersion: '5.7',
       configurations: []
     });
 
-    const parameterGroup = new rds.ParameterGroup(parent, ctx.cid('MysqlParameterGroup'), {
+    const parameterGroup = new rds.ParameterGroup(parent, 'MysqlParameterGroup', {
       family: 'mysql5.7',
       parameters: {}
     });
 
     if (ctx.isProd()) {
-      this.databaseInstance = new rds.DatabaseInstance(parent, ctx.cid('MysqlInstance'), {
+      this.databaseInstance = new rds.DatabaseInstance(parent, 'MysqlInstance', {
         instanceIdentifier: props.appName,
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
@@ -55,7 +55,7 @@ export class Mysql extends Construct {
       });
 
     } else {
-      this.databaseInstance = new rds.DatabaseInstance(parent, ctx.cid('MysqlInstance'), {
+      this.databaseInstance = new rds.DatabaseInstance(parent, 'MysqlInstance', {
         instanceIdentifier: props.appName,
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),

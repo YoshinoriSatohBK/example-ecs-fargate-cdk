@@ -2,14 +2,19 @@
 import 'source-map-support/register';
 
 import cdk = require('@aws-cdk/core');
+import ec2 = require('@aws-cdk/aws-ec2');
 import ecr = require('@aws-cdk/aws-ecr');
 import ecs = require('@aws-cdk/aws-ecs');
+import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
+import route53 = require('@aws-cdk/aws-route53');
+import targets = require('@aws-cdk/aws-route53-targets/lib');
 import codebuild = require('@aws-cdk/aws-codebuild');
-import { Vpc } from '../lib/vpc';
 import { Mysql } from '../lib/mysql';
 import { FargateTaskDefinitionLaravel } from '../lib/fargate-taskdefinition-laravel';
-import { FargateService } from '../lib/fargate-service';
+// import { FargateService } from '../lib/fargate-service';
+import { Ingress } from '../lib/ingress';
 import { ImageCi } from '../lib/image-ci';
+// import { FargateCd } from '../lib/fargate-cd';
 
 import { Context } from '../context/context';
 
@@ -48,27 +53,6 @@ const conf = {
     owner: 'YoshinoriSatoh',
     repo: ctx.appName,
     branch: ctx.branch
-  },
-  buildspec: {
-    version: '0.2',
-    phases: {
-      pre_build: {
-        commands: [
-          `$(aws ecr get-login --no-include-email --region ${ctx.region})`
-        ]
-      },
-      build: {
-        commands: [
-          `docker build -t ${ctx.appName}:${ctx.env} DOCKERFILE`
-        ]
-      },
-      post_build: {
-        commands: [
-          `docker tag ${ctx.appName}:${ctx.env} ${ctx.account}.dkr.ecr.${ctx.region}.amazonaws.com/${ctx.appName}:${ctx.env}`,
-          `docker push ${ctx.account}.dkr.ecr.${ctx.region}.amazonaws.com/${ctx.appName}:${ctx.env}`
-        ]
-      }
-    }
   }
 };
 
@@ -77,43 +61,91 @@ class LaravelStack extends cdk.Stack {
   constructor(parent: cdk.App, name: string, props: cdk.StackProps) {
     super(parent, name, props);
 
-    const vpcConstruct = new Vpc(this, ctx.cid('Vpc'), {
-      cidr: conf.vpc.cidr
+    const vpc = new ec2.Vpc(this, 'Vpc', {
+      cidr: conf.vpc.cidr,
+      maxAzs: 2,
+      subnetConfiguration: [
+        {
+          cidrMask: 24,
+          name: 'Ingress',
+          subnetType: ec2.SubnetType.PUBLIC,
+        },
+        {
+          cidrMask: 24,
+          name: 'Application',
+          subnetType: ec2.SubnetType.PRIVATE,
+        },
+        {
+          cidrMask: 28,
+          name: 'Database',
+          subnetType: ec2.SubnetType.ISOLATED,
+        }
+      ],
     });
 
-    const rdsConstruct = new Mysql(this, ctx.cid('Mysql'), {
-      vpc: vpcConstruct.vpc,
-      appName: ctx.appName,
-      conf: conf.rds
-    })
+      // ALB
+    const alb = new elbv2.ApplicationLoadBalancer(this, 'Alb', {
+      vpc,
+      internetFacing: true,
+      securityGroup: new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
+        vpc,
+        securityGroupName: 'alb-security-group',
+        description: 'ALB Security Group',
+        allowAllOutbound: true
+      })
+    });
+    // const listener = alb.addListener('Listener', {
+    //   protocol: elbv2.ApplicationProtocol.HTTPS,
+    //   port: 443,
+    //   open: true
+    // });
 
-    const ecsCluster = new ecs.Cluster(this, ctx.cid('EcsCluster'), {
-      vpc: vpcConstruct.vpc
+    // Set certificate to alb
+    //listener.addCertificateArns('ALBCertificate', props.conf.acm.certificateArns);
+
+    // Route53
+    const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+      hostedZoneId: conf.route53.hostedZoneId,
+      zoneName: conf.route53.domain,
+    });
+    new route53.ARecord(this, 'SiteAliasRecord', {
+      zone,
+      recordName: 'app',
+      target: route53.AddressRecordTarget.fromAlias(new targets.LoadBalancerTarget(alb))
     });
 
-    const taskDefinitionConstruct = new FargateTaskDefinitionLaravel(this, ctx.cid('FargateTaskDefinitionLaravel'), {
+    // const rdsConstruct = new Mysql(this, 'Mysql', {
+    //   vpc: vpcConstruct.vpc,
+    //   appName: ctx.appName,
+    //   conf: conf.rds
+    // })
+
+    const ecsCluster = new ecs.Cluster(this, 'EcsCluster', {
+      vpc
+    });
+
+    const taskDefinitionConstruct = new FargateTaskDefinitionLaravel(this, 'FargateTaskDefinitionLaravel', {
       conf: {
-        rds: Object.assign({}, conf.rds, {
-          databaseInstance: rdsConstruct.databaseInstance
-        }),
+        // rds: Object.assign({}, conf.rds, {
+        //   databaseInstance: rdsConstruct.databaseInstance
+        // }),
         ecr: conf.ecr
       }
     });
 
-    const fargateServiceLaravelConstruct = new FargateService(this, ctx.cid('FargateServiceLaravel'), {
-      vpc: vpcConstruct.vpc,
-      ecsCluster,
-      taskDefinition: taskDefinitionConstruct.taskDefinition,
-      conf: {
-        acm: conf.acm,
-        route53: conf.route53
-      }
-    });
+    // const fargateServiceLaravelConstruct = new FargateService(this, 'FargateServiceLaravel', {
+    //   vpc: vpcConstruct.vpc,
+    //   ecsCluster,
+    //   taskDefinition: taskDefinitionConstruct.taskDefinition,
+    //   conf: {
+    //     acm: conf.acm,
+    //     route53: conf.route53
+    //   }
+    // });
 
-    const imageCiLaravel = new ImageCi(this, ctx.cid('ImageCiLaravel'), {
+    const imageCiLaravel = new ImageCi(this, 'ImageCiLaravel', {
       git: conf.git,
       ecr: conf.ecr.laravel,
-      buildSpec: conf.buildspec,
       environment: {
         buildImage: codebuild.LinuxBuildImage.UBUNTU_14_04_DOCKER_18_09_0,
         computeType: codebuild.ComputeType.SMALL,
@@ -121,10 +153,9 @@ class LaravelStack extends cdk.Stack {
       }
     });
 
-    const imageCiNginx = new ImageCi(this, ctx.cid('ImageCiNginx'), {
+    const imageCiNginx = new ImageCi(this, 'ImageCiNginx', {
       git: conf.git,
       ecr: conf.ecr.nginx,
-      buildSpec: conf.buildspec,
       environment: {
         buildImage: codebuild.LinuxBuildImage.UBUNTU_14_04_DOCKER_18_09_0,
         computeType: codebuild.ComputeType.SMALL,
@@ -132,7 +163,7 @@ class LaravelStack extends cdk.Stack {
         environmentVariables: {
           DOCKERFILE: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: './Dockerfile.nginx'
+            value: 'Dockerfile.nginx'
           }
         }
       }
@@ -142,7 +173,7 @@ class LaravelStack extends cdk.Stack {
 
 new LaravelStack(app, `${ctx.appName}-${ctx.env}`, {
   env: {
-    account: ctx.appName,
+    account: ctx.account,
     region: ctx.region
   }
 });

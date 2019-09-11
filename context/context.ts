@@ -15,10 +15,6 @@ export class Context {
     this.branch = node.tryGetContext('branch');
   }
 
-  cid(id: string) {
-    return `${this.appName}-${this.env}-${id}`
-  }
-
   isProd() {
     return this.env === 'prod';
   }

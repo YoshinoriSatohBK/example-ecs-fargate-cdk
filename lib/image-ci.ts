@@ -9,18 +9,18 @@ const buildspec = {
   phases: {
     pre_build: {
       commands: [
-        `$(aws ecr get-login --no-include-email --region $AWS_REGION)`
+        "$(aws ecr get-login --no-include-email --region $AWS_REGION)"
       ]
     },
     build: {
       commands: [
-        `docker build -t $APP_NAME:$ENV $DOCKERFILE`
+        `docker build -t $REPO_NAME:$ENV -f $DOCKERFILE .`
       ]
     },
     post_build: {
       commands: [
-        `docker tag $$APP_NAME:$ENV $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:$ENV`,
-        `docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$APP_NAME:$ENV`
+        `docker tag $REPO_NAME:$ENV $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$ENV`,
+        `docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$ENV`
       ]
     }
   }
@@ -36,7 +36,6 @@ export interface ImageCiProps {
     repositoryName: string,
     tag: string
   };
-  buildSpec: any;
   environment: any;
 }
 
@@ -46,7 +45,7 @@ export class ImageCi extends Construct {
     super(parent, name);
     const ctx = parent.node.tryGetContext('ctx');
 
-    const repository = new ecr.Repository(parent, ctx.cid(`Repository-${props.ecr.repositoryName}`), {
+    const repository = new ecr.Repository(parent, `Repository-${props.ecr.repositoryName}`, {
       repositoryName: props.ecr.repositoryName
     });
 
@@ -59,35 +58,35 @@ export class ImageCi extends Construct {
       ]
     });
 
-    const role = new iam.Role(this, ctx.cid(`CodebuildServiceRole-${props.ecr.repositoryName}`), {
+    const role = new iam.Role(this, `CodebuildServiceRole-${props.ecr.repositoryName}`, {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com')
     });
     role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess'));
 
-    new codebuild.Project(this, ctx.cid(`CodebuildProject-${props.ecr.repositoryName}`), {
+    new codebuild.Project(this, `CodebuildProject-${props.ecr.repositoryName}`, {
       source: gitHubSource,
       role: role,
       environment: props.environment,
       environmentVariables: {
-        $AWS_ACCOUNT_ID: {
+        REPO_NAME: {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: ctx.account
+          value: ctx.repositoryName
         },
-        $AWS_REGION: {
-          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: ctx.region
-        },
-        $APP_NAME: {
-          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: ctx.appName
-        },
-        $ENV: {
+        ENV: {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
           value: ctx.env
         },
-        $DOCKERFILE: {
+        AWS_ACCOUNT_ID: {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: './Dockerfile'
+          value: ctx.account
+        },
+        AWS_REGION: {
+          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+          value: ctx.region
+        },
+        DOCKERFILE: {
+          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+          value: 'Dockerfile'
         }
       },
       buildSpec: codebuild.BuildSpec.fromObject(buildspec)

@@ -31,7 +31,7 @@ export class FargateService extends Construct {
     const service = new ecs.FargateService(parent, ctx.cid('FargateService'), {
       cluster: props.ecsCluster,
       taskDefinition: props.taskDefinition,
-      desiredCount: 2,
+      desiredCount: 0,
       assignPublicIp: true,
       enableECSManagedTags: true,
       securityGroup: new ec2.SecurityGroup(parent, ctx.cid('FargateServiceSecurityGroup'), {
@@ -56,11 +56,11 @@ export class FargateService extends Construct {
         allowAllOutbound: true
       })
     });
-    const albTargetGroup = new elbv2.ApplicationTargetGroup(parent, ctx.cid('ApplicationTargetGroup'), {
+    const albTargetGroupBlue = new elbv2.ApplicationTargetGroup(parent, ctx.cid('ApplicationTargetGroupBlue'), {
       vpc: props.vpc,
       protocol: elbv2.ApplicationProtocol.HTTP,
       port: 80,
-      targetGroupName: 'target-group',
+      targetGroupName: 'target-group-blue',
       targetType: elbv2.TargetType.IP,
       targets: [service]
     });
@@ -68,7 +68,7 @@ export class FargateService extends Construct {
       protocol: elbv2.ApplicationProtocol.HTTPS,
       port: 443,
       open: true,
-      defaultTargetGroups: [albTargetGroup]
+      defaultTargetGroups: [albTargetGroupBlue]
     });
 
     // Set certificate to alb

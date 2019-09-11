@@ -11,7 +11,7 @@ interface FargateTaskDefinitionLaravelConfEcrProps {
 
 export interface FargateTaskDefinitionLaravelProps {
   conf: {
-    rds:{
+    rds?:{
       databaseInstance: rds.IDatabaseInstance;
       databaseName: string;
       masterUsername: string;
@@ -31,13 +31,13 @@ export class FargateTaskDefinitionLaravel extends Construct {
     const ctx = parent.node.tryGetContext('ctx');
 
     // Task Definition
-    this.taskDefinition = new ecs.FargateTaskDefinition(this, ctx.cid('FargateTaskDefinition'), {
+    this.taskDefinition = new ecs.FargateTaskDefinition(this, 'FargateTaskDefinition', {
       memoryLimitMiB: 512,
       cpu: 256
     });
 
     // Add laravel container images to Tast Definition
-    const ecrRepositoryNginx = ecr.Repository.fromRepositoryName(parent, ctx.cid('LaravelNginxEcrRepository'), props.conf.ecr.nginx.repositoryName);
+    const ecrRepositoryNginx = ecr.Repository.fromRepositoryName(parent, 'LaravelNginxEcrRepository', props.conf.ecr.nginx.repositoryName);
     const containerDefinitionlNginx = this.taskDefinition.addContainer("ContainerDefinitionlNginx", {
       image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryNginx, props.conf.ecr.nginx.tag)
     });
@@ -48,17 +48,21 @@ export class FargateTaskDefinitionLaravel extends Construct {
     });
 
     // Add nginx container images to Tast Definition
-    const ecrRepositoryLaravel = ecr.Repository.fromRepositoryName(parent, ctx.cid('LravelAppEcrRepository'), props.conf.ecr.laravel.repositoryName);
-    const containerDefinitionLaravel = this.taskDefinition.addContainer("ContainerDefinitionLaravel", {
-      image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryLaravel, props.conf.ecr.laravel.tag),
-      workingDirectory: '/var/www/html',
-      environment: {
+    let environment = {};
+    if (props.conf.rds) {
+      environment = {
         DB_HOST: props.conf.rds.databaseInstance.instanceEndpoint.hostname,
         DB_PORT: String(props.conf.rds.databaseInstance.instanceEndpoint.port),
         DB_SOCKET: props.conf.rds.databaseInstance.instanceEndpoint.socketAddress,
         DB_DATABASE: props.conf.rds.databaseName,
         DB_USERNAME: props.conf.rds.masterUsername
-      }
+      };
+    }
+    const ecrRepositoryLaravel = ecr.Repository.fromRepositoryName(parent, 'LravelAppEcrRepository', props.conf.ecr.laravel.repositoryName);
+    const containerDefinitionLaravel = this.taskDefinition.addContainer("ContainerDefinitionLaravel", {
+      image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryLaravel, props.conf.ecr.laravel.tag),
+      workingDirectory: '/var/www/html',
+      environment: environment
     });
     containerDefinitionLaravel.addPortMappings({
       containerPort: 9000,

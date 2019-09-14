@@ -11,8 +11,7 @@ import targets = require('@aws-cdk/aws-route53-targets/lib');
 import codebuild = require('@aws-cdk/aws-codebuild');
 import { Mysql } from '../lib/mysql';
 import { FargateTaskDefinitionLaravel } from '../lib/fargate-taskdefinition-laravel';
-// import { FargateService } from '../lib/fargate-service';
-import { Ingress } from '../lib/ingress';
+import { FargateService } from '../lib/fargate-service';
 import { ImageCi } from '../lib/image-ci';
 // import { FargateCd } from '../lib/fargate-cd';
 
@@ -83,17 +82,31 @@ class LaravelStack extends cdk.Stack {
       ],
     });
 
-      // ALB
-    const alb = new elbv2.ApplicationLoadBalancer(this, 'Alb', {
-      vpc,
-      internetFacing: true,
-      securityGroup: new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
-        vpc,
-        securityGroupName: 'alb-security-group',
-        description: 'ALB Security Group',
-        allowAllOutbound: true
-      })
-    });
+    // ALB
+    // const albSecurityGroup = new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
+    //   vpc,
+    //   securityGroupName: 'alb-security-group',
+    //   description: 'ALB Security Group',
+    //   allowAllOutbound: true
+    // });
+    // albSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), new ec2.Port({
+    //   protocol: ec2.Protocol.TCP,
+    //   stringRepresentation: "active port",
+    //   fromPort: 443,
+    //   toPort: 443
+    // }));
+    // albSecurityGroup.addIngressRule(ec2.Peer.anyIpv4(), new ec2.Port({
+    //   protocol: ec2.Protocol.TCP,
+    //   stringRepresentation: "standby port",
+    //   fromPort: 8080,
+    //   toPort: 8080
+    // }));
+
+    // const alb = new elbv2.ApplicationLoadBalancer(this, 'Alb', {
+    //   vpc,
+    //   internetFacing: true,
+    //   securityGroup: albSecurityGroup
+    // });
     // const listener = alb.addListener('Listener', {
     //   protocol: elbv2.ApplicationProtocol.HTTPS,
     //   port: 443,
@@ -101,18 +114,18 @@ class LaravelStack extends cdk.Stack {
     // });
 
     // Set certificate to alb
-    //listener.addCertificateArns('ALBCertificate', props.conf.acm.certificateArns);
+    // listener.addCertificateArns('ALBCertificate', conf.acm.certificateArns);
 
     // Route53
-    const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
-      hostedZoneId: conf.route53.hostedZoneId,
-      zoneName: conf.route53.domain,
-    });
-    new route53.ARecord(this, 'SiteAliasRecord', {
-      zone,
-      recordName: 'app',
-      target: route53.AddressRecordTarget.fromAlias(new targets.LoadBalancerTarget(alb))
-    });
+    // const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
+    //   hostedZoneId: conf.route53.hostedZoneId,
+    //   zoneName: conf.route53.domain,
+    // });
+    // new route53.ARecord(this, 'SiteAliasRecord', {
+    //   zone,
+    //   recordName: 'app',
+    //   target: route53.AddressRecordTarget.fromAlias(new targets.LoadBalancerTarget(alb))
+    // });
 
     // const rdsConstruct = new Mysql(this, 'Mysql', {
     //   vpc: vpcConstruct.vpc,
@@ -133,15 +146,15 @@ class LaravelStack extends cdk.Stack {
       }
     });
 
-    // const fargateServiceLaravelConstruct = new FargateService(this, 'FargateServiceLaravel', {
-    //   vpc: vpcConstruct.vpc,
-    //   ecsCluster,
-    //   taskDefinition: taskDefinitionConstruct.taskDefinition,
-    //   conf: {
-    //     acm: conf.acm,
-    //     route53: conf.route53
-    //   }
-    // });
+    const fargateServiceLaravelConstruct = new FargateService(this, 'FargateServiceLaravel', {
+      vpc,
+      ecsCluster,
+      taskDefinition: taskDefinitionConstruct.taskDefinition,
+      conf: {
+        acm: conf.acm,
+        route53: conf.route53
+      }
+    });
 
     const imageCiLaravel = new ImageCi(this, 'ImageCiLaravel', {
       git: conf.git,
@@ -149,7 +162,17 @@ class LaravelStack extends cdk.Stack {
       environment: {
         buildImage: codebuild.LinuxBuildImage.UBUNTU_14_04_DOCKER_18_09_0,
         computeType: codebuild.ComputeType.SMALL,
-        privileged: true
+        privileged: true,
+        environmentVariables: {
+          REPO_NAME: {
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+            value: conf.ecr.laravel.repositoryName
+          },
+          DOCKERFILE: {
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+            value: 'Dockerfile'
+          }
+        }
       }
     });
 
@@ -161,6 +184,10 @@ class LaravelStack extends cdk.Stack {
         computeType: codebuild.ComputeType.SMALL,
         privileged: true,
         environmentVariables: {
+          REPO_NAME: {
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+            value: conf.ecr.nginx.repositoryName
+          },
           DOCKERFILE: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
             value: 'Dockerfile.nginx'

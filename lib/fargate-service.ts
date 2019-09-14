@@ -28,13 +28,13 @@ export class FargateService extends Construct {
     const ctx = parent.node.tryGetContext('ctx');
 
     // Service
-    const service = new ecs.FargateService(parent, ctx.cid('FargateService'), {
+    const service = new ecs.FargateService(parent, 'FargateService', {
       cluster: props.ecsCluster,
       taskDefinition: props.taskDefinition,
       desiredCount: 0,
       assignPublicIp: true,
       enableECSManagedTags: true,
-      securityGroup: new ec2.SecurityGroup(parent, ctx.cid('FargateServiceSecurityGroup'), {
+      securityGroup: new ec2.SecurityGroup(parent, 'FargateServiceSecurityGroup', {
         vpc: props.vpc,
         securityGroupName: 'service-security-group',
         description: 'Service Security Group',
@@ -46,17 +46,17 @@ export class FargateService extends Construct {
     });
 
     // ALB
-    const alb = new elbv2.ApplicationLoadBalancer(this, ctx.cid('Alb'), {
+    const alb = new elbv2.ApplicationLoadBalancer(this, 'Alb', {
       vpc: props.vpc,
       internetFacing: true,
-      securityGroup: new ec2.SecurityGroup(parent, ctx.cid('AlbSecurityGroup'), {
+      securityGroup: new ec2.SecurityGroup(parent, 'AlbSecurityGroup', {
       vpc: props.vpc,
         securityGroupName: 'alb-security-group',
         description: 'ALB Security Group',
         allowAllOutbound: true
       })
     });
-    const albTargetGroupBlue = new elbv2.ApplicationTargetGroup(parent, ctx.cid('ApplicationTargetGroupBlue'), {
+    const albTargetGroupBlue = new elbv2.ApplicationTargetGroup(parent, 'ApplicationTargetGroupBlue', {
       vpc: props.vpc,
       protocol: elbv2.ApplicationProtocol.HTTP,
       port: 80,
@@ -83,11 +83,11 @@ export class FargateService extends Construct {
     }))
 
     // Route53
-    const zone = route53.HostedZone.fromHostedZoneAttributes(this, ctx.cid('HostedZone'), {
+    const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
       hostedZoneId: props.conf.route53.hostedZoneId,
       zoneName: props.conf.route53.domain,
     });
-    new route53.ARecord(this, ctx.cid('SiteAliasRecord'), {
+    new route53.ARecord(this, 'SiteAliasRecord', {
       zone,
       recordName: 'app',
       target: route53.AddressRecordTarget.fromAlias(new targets.LoadBalancerTarget(alb))

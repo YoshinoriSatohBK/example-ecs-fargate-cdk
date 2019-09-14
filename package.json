@@ -14,17 +14,17 @@
     "typescript": "^3.6.2"
   },
   "dependencies": {
-    "@aws-cdk/aws-codebuild": "^1.7.0",
-    "@aws-cdk/aws-codedeploy": "^1.7.0",
-    "@aws-cdk/aws-codepipeline-actions": "^1.7.0",
-    "@aws-cdk/aws-ecs": "^1.7.0",
-    "@aws-cdk/aws-ecs-patterns": "^1.7.0",
-    "@aws-cdk/aws-elasticloadbalancingv2": "^1.7.0",
-    "@aws-cdk/aws-elasticloadbalancingv2-targets": "^1.7.0",
-    "@aws-cdk/aws-rds": "^1.7.0",
-    "@aws-cdk/aws-sns": "^1.7.0",
-    "@aws-cdk/aws-sns-subscriptions": "^1.7.0",
-    "@aws-cdk/aws-sqs": "^1.7.0",
-    "@aws-cdk/core": "^1.7.0"
+    "@aws-cdk/aws-codebuild": "^1.8.0",
+    "@aws-cdk/aws-codedeploy": "^1.8.0",
+    "@aws-cdk/aws-codepipeline-actions": "^1.8.0",
+    "@aws-cdk/aws-ecs": "^1.8.0",
+    "@aws-cdk/aws-ecs-patterns": "^1.8.0",
+    "@aws-cdk/aws-elasticloadbalancingv2": "^1.8.0",
+    "@aws-cdk/aws-elasticloadbalancingv2-targets": "^1.8.0",
+    "@aws-cdk/aws-rds": "^1.8.0",
+    "@aws-cdk/aws-sns": "^1.8.0",
+    "@aws-cdk/aws-sns-subscriptions": "^1.8.0",
+    "@aws-cdk/aws-sqs": "^1.8.0",
+    "@aws-cdk/core": "^1.8.0"
   }
 }

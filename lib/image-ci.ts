@@ -63,15 +63,12 @@ export class ImageCi extends Construct {
     });
     role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess'));
 
+
     new codebuild.Project(this, `CodebuildProject-${props.ecr.repositoryName}`, {
       source: gitHubSource,
       role: role,
       environment: props.environment,
       environmentVariables: {
-        REPO_NAME: {
-          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: ctx.repositoryName
-        },
         ENV: {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
           value: ctx.env
@@ -83,10 +80,6 @@ export class ImageCi extends Construct {
         AWS_REGION: {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
           value: ctx.region
-        },
-        DOCKERFILE: {
-          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: 'Dockerfile'
         }
       },
       buildSpec: codebuild.BuildSpec.fromObject(buildspec)

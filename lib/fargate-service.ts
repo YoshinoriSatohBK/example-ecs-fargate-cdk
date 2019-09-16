@@ -32,6 +32,9 @@ export class FargateService extends Construct {
       desiredCount: 1,
       assignPublicIp: true,
       enableECSManagedTags: true,
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
+      healthCheckGracePeriod: cdk.Duration.seconds(60),
       securityGroup: new ec2.SecurityGroup(parent, 'FargateServiceSecurityGroup', {
         vpc: props.vpc,
         securityGroupName: 'service-security-group',

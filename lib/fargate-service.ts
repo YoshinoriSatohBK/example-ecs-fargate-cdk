@@ -10,14 +10,13 @@ export interface FargateServiceProps {
   vpc: ec2.IVpc;
   ecsCluster: ecs.Cluster;
   taskDefinition: ecs.FargateTaskDefinition;
-  conf: {
-    acm: {
-      certificateArns: Array<string>;
-    },
-    route53: {
-      hostedZoneId: string;
-      domain: string;
-    }
+  acm: {
+    certificateArns: Array<string>;
+  },
+  route53: {
+    hostedZoneId: string;
+    domain: string;
+    subDomain: string;
   }
 }
 
@@ -25,13 +24,12 @@ export class FargateService extends Construct {
 
   constructor(parent: Construct, name: string, props: FargateServiceProps) {
     super(parent, name);
-    const ctx = parent.node.tryGetContext('ctx');
 
     // Service
     const service = new ecs.FargateService(parent, 'FargateService', {
       cluster: props.ecsCluster,
       taskDefinition: props.taskDefinition,
-      desiredCount: 0,
+      desiredCount: 1,
       assignPublicIp: true,
       enableECSManagedTags: true,
       securityGroup: new ec2.SecurityGroup(parent, 'FargateServiceSecurityGroup', {
@@ -72,7 +70,7 @@ export class FargateService extends Construct {
     });
 
     // Set certificate to alb
-    listener.addCertificateArns('ALBCertificate', props.conf.acm.certificateArns);
+    listener.addCertificateArns('ALBCertificate', props.acm.certificateArns);
 
     // Set sequrity group from alb to fargate service
     service.connections.allowFrom(alb, new ec2.Port({
@@ -84,12 +82,12 @@ export class FargateService extends Construct {
 
     // Route53
     const zone = route53.HostedZone.fromHostedZoneAttributes(this, 'HostedZone', {
-      hostedZoneId: props.conf.route53.hostedZoneId,
-      zoneName: props.conf.route53.domain,
+      hostedZoneId: props.route53.hostedZoneId,
+      zoneName: props.route53.domain,
     });
     new route53.ARecord(this, 'SiteAliasRecord', {
       zone,
-      recordName: 'app',
+      recordName: `${props.route53.subDomain}-${parent.node.tryGetContext('env')}`,
       target: route53.AddressRecordTarget.fromAlias(new targets.LoadBalancerTarget(alb))
     });
   }

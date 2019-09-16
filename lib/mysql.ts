@@ -5,8 +5,7 @@ import rds = require('@aws-cdk/aws-rds');
 
 export interface RdsProps {
   vpc: ec2.IVpc;
-  appName: string;
-  conf: {
+  rds: {
     databaseName: string,
     masterUsername: string
   }
@@ -17,7 +16,6 @@ export class Mysql extends Construct {
 
   constructor(parent: Construct, name: string, props: RdsProps) {
     super(parent, name);
-    const ctx = parent.node.tryGetContext('ctx');
 
     const optionGroup = new rds.OptionGroup(parent, 'MysqlOptionGroup', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
@@ -30,14 +28,14 @@ export class Mysql extends Construct {
       parameters: {}
     });
 
-    if (ctx.isProd()) {
+    if (parent.node.tryGetContext('env') === 'prod') {
       this.databaseInstance = new rds.DatabaseInstance(parent, 'MysqlInstance', {
-        instanceIdentifier: props.appName,
+        instanceIdentifier: parent.node.tryGetContext('appName'),
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
         engineVersion: '5.7.22',
-        databaseName: props.conf.databaseName,
-        masterUsername: props.conf.masterUsername,
+        databaseName: props.rds.databaseName,
+        masterUsername: props.rds.masterUsername,
         vpc: props.vpc,
         multiAz: true,
         allocatedStorage: 100,
@@ -56,12 +54,12 @@ export class Mysql extends Construct {
 
     } else {
       this.databaseInstance = new rds.DatabaseInstance(parent, 'MysqlInstance', {
-        instanceIdentifier: props.appName,
+        instanceIdentifier: parent.node.tryGetContext('appName'),
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
         engineVersion: '5.7.22',
-        databaseName: props.conf.databaseName,
-        masterUsername: props.conf.masterUsername,
+        databaseName: props.rds.databaseName,
+        masterUsername: props.rds.masterUsername,
         vpc: props.vpc,
         multiAz: false,
         allocatedStorage: 20,

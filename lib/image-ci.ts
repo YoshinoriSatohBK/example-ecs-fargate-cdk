@@ -34,7 +34,8 @@ export interface ImageCiProps {
   };
   ecr: {
     repositoryName: string,
-    tag: string
+    tag: string,
+    dockerfile: string;
   };
   environment: any;
 }
@@ -43,7 +44,6 @@ export class ImageCi extends Construct {
 
   constructor(parent: cdk.Construct, name: string, props: ImageCiProps) {
     super(parent, name);
-    const ctx = parent.node.tryGetContext('ctx');
 
     const repository = new ecr.Repository(parent, `Repository-${props.ecr.repositoryName}`, {
       repositoryName: props.ecr.repositoryName
@@ -69,17 +69,25 @@ export class ImageCi extends Construct {
       role: role,
       environment: props.environment,
       environmentVariables: {
-        ENV: {
-          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: ctx.env
-        },
         AWS_ACCOUNT_ID: {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: ctx.account
+          value: parent.node.tryGetContext('account')
         },
         AWS_REGION: {
           type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-          value: ctx.region
+          value: parent.node.tryGetContext('region')
+        },
+        ENV: {
+          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+          value: parent.node.tryGetContext('env')
+        },
+        REPO_NAME: {
+          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+          value: props.ecr.repositoryName
+        },
+        DOCKERFILE: {
+          type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+          value: props.ecr.dockerfile
         }
       },
       buildSpec: codebuild.BuildSpec.fromObject(buildspec)

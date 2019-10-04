@@ -8,7 +8,6 @@ import iam = require('@aws-cdk/aws-iam');
 
 export interface FargateTaskDefinitionLaravelConfEcrProps {
   repositoryName: string;
-  tag: string;
 }
 
 interface FargateTaskDefinitionLaravelProps {
@@ -50,13 +49,13 @@ export class FargateTaskDefinitionLaravel extends Construct {
     // Add laravel container images to Tast Definition
     const ecrRepositoryNginx = ecr.Repository.fromRepositoryName(parent, 'LaravelNginxEcrRepository', props.ecr.nginx.repositoryName);
     const containerDefinitionlNginx = this.taskDefinition.addContainer("ContainerDefinitionlNginx", {
-      image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryNginx, props.ecr.nginx.tag),
+      image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryNginx, '019e17e'),
       logging: new ecs.AwsLogDriver({
         logGroup: new logs.LogGroup(parent, 'LogGroupNginx', {
-          logGroupName: 'laravel-app-nginx',
+          logGroupName: props.ecr.nginx.repositoryName,
           retention: logs.RetentionDays.TWO_WEEKS
         }),
-        streamPrefix: 'ecs'
+        streamPrefix: props.ecr.nginx.repositoryName
       })
     });
     containerDefinitionlNginx.addPortMappings({
@@ -67,16 +66,16 @@ export class FargateTaskDefinitionLaravel extends Construct {
 
     const ecrRepositoryLaravel = ecr.Repository.fromRepositoryName(parent, 'LravelAppEcrRepository', props.ecr.laravel.repositoryName);
     const containerDefinitionLaravel = this.taskDefinition.addContainer("ContainerDefinitionLaravel", {
-      image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryLaravel, props.ecr.laravel.tag),
+      image: ecs.ContainerImage.fromEcrRepository(ecrRepositoryLaravel, '019e17e'),
       workingDirectory: '/var/www/html',
       environment: props.environment,
       secrets: props.secrets,
       logging: new ecs.AwsLogDriver({
         logGroup: new logs.LogGroup(parent, 'LogGroupLaravel', {
-          logGroupName: 'laravel-app',
+          logGroupName: props.ecr.laravel.repositoryName,
           retention: logs.RetentionDays.TWO_WEEKS
         }),
-        streamPrefix: 'ecs'
+        streamPrefix: props.ecr.nginx.repositoryName
       })
     });
     containerDefinitionLaravel.addPortMappings({

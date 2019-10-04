@@ -4,7 +4,6 @@ import codebuild = require('@aws-cdk/aws-codebuild');
 
 interface ecrRepository　{
   repositoryName: string;
-  tag: string;
   dockerfile: string;
 }
 

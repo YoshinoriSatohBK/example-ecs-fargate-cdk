@@ -10,11 +10,11 @@ import secretsmanager = require('@aws-cdk/aws-secretsmanager');
 import { Mysql } from './mysql';
 import { FargateTaskDefinitionLaravel } from '../lib/fargate-taskdefinition-laravel';
 import { FargateService } from './fargate-service';
-import { ImageCi } from './image-ci';
+import { FargateServiceCd } from './fargate-service-cd';
 
 interface ecrRepository {
   repositoryName: string;
-  tag: string;
+  dockerfile: string;
 }
 
 interface BackendProps extends cdk.StackProps {
@@ -25,6 +25,11 @@ interface BackendProps extends cdk.StackProps {
     hostedZoneId: string;
     domain: string;
     subDomain: string;
+  },
+  git: {
+    owner: string,
+    repo: string,
+    branch: string
   },
   ecr: {
     nginx: ecrRepository;
@@ -47,7 +52,7 @@ export class BackendStack extends cdk.Stack {
   constructor(parent: cdk.App, name: string, props: BackendProps) {
     super(parent, name, props);
 
-    const env =parent.node.tryGetContext('env');
+    const env = parent.node.tryGetContext('env');
 
     const vpc = new ec2.Vpc(this, 'Vpc', {
       cidr: props.vpc.cidr,
@@ -86,12 +91,10 @@ export class BackendStack extends cdk.Stack {
     const taskDefinitionConstruct = new FargateTaskDefinitionLaravel(this, 'FargateTaskDefinitionLaravel', {
       ecr: {
         nginx: {
-          repositoryName: props.ecr.nginx.repositoryName,
-          tag: props.ecr.nginx.tag
+          repositoryName: props.ecr.nginx.repositoryName
         },
         laravel: {
-          repositoryName: props.ecr.laravel.repositoryName,
-          tag: props.ecr.laravel.tag
+          repositoryName: props.ecr.laravel.repositoryName
         }
       },
       cpu: props.ecs.cpu,
@@ -127,6 +130,17 @@ export class BackendStack extends cdk.Stack {
         domain: props.route53.domain,
         subDomain: props.route53.subDomain
       },
+    });
+
+    new FargateServiceCd(this, 'FargateServiceCdLaravel', {
+      git: props.git,
+      ecr: props.ecr,
+      service: fargateServiceBackendConstruct.service,
+      environment: {
+        buildImage: codebuild.LinuxBuildImage.UBUNTU_14_04_DOCKER_18_09_0,
+        computeType: codebuild.ComputeType.SMALL,
+        privileged: true
+      }
     });
   }
 }

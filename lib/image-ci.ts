@@ -2,25 +2,28 @@ import cdk = require('@aws-cdk/core');
 import { Construct } from '@aws-cdk/core';
 import ecr = require('@aws-cdk/aws-ecr');
 import codebuild = require('@aws-cdk/aws-codebuild');
+import codepipeline = require('@aws-cdk/aws-codepipeline');
 import iam = require('@aws-cdk/aws-iam');
+import uuid = require('uuid/v4');
 
 const buildspec = {
   version: '0.2',
   phases: {
     pre_build: {
       commands: [
-        "$(aws ecr get-login --no-include-email --region $AWS_REGION)"
+        "$(aws ecr get-login --no-include-email --region $AWS_REGION)",
+        "COMMIT_ID=$(git rev-parse --short HEAD)"
       ]
     },
     build: {
       commands: [
-        `docker build -t $REPO_NAME:$ENV -f $DOCKERFILE .`
+        `docker build -t $REPO_NAME:$COMMIT_ID -f $DOCKERFILE .`
       ]
     },
     post_build: {
       commands: [
-        `docker tag $REPO_NAME:$ENV $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$ENV`,
-        `docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$ENV`
+        `docker tag $REPO_NAME:$COMMIT_ID $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$COMMIT_ID`,
+        `docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$REPO_NAME:$COMMIT_ID`
       ]
     }
   }
@@ -33,8 +36,7 @@ export interface ImageCiProps {
     branch: string;
   };
   ecr: {
-    repositoryName: string,
-    tag: string,
+    repositoryName: string;
     dockerfile: string;
   };
   environment: any;
@@ -54,7 +56,9 @@ export class ImageCi extends Construct {
       repo: props.git.repo,
       webhook: true,
       webhookFilters: [
-        codebuild.FilterGroup.inEventOf(codebuild.EventAction.PUSH).andBranchIs(props.git.branch),
+        codebuild.FilterGroup.inEventOf(codebuild.EventAction.PULL_REQUEST_CREATED).andBaseBranchIs(props.git.branch),
+        codebuild.FilterGroup.inEventOf(codebuild.EventAction.PULL_REQUEST_UPDATED).andBaseBranchIs(props.git.branch),
+        codebuild.FilterGroup.inEventOf(codebuild.EventAction.PULL_REQUEST_REOPENED).andBaseBranchIs(props.git.branch)
       ]
     });
 
@@ -62,7 +66,6 @@ export class ImageCi extends Construct {
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com')
     });
     role.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess'));
-
 
     new codebuild.Project(this, `CodebuildProject-${props.ecr.repositoryName}`, {
       source: gitHubSource,
@@ -91,6 +94,5 @@ export class ImageCi extends Construct {
         }
       },
       buildSpec: codebuild.BuildSpec.fromObject(buildspec)
-    }
-  )}
-}
+    })
+}}

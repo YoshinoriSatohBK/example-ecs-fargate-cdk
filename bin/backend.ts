@@ -10,6 +10,8 @@ const account = app.node.tryGetContext('account');
 const region = app.node.tryGetContext('region');
 const appName = app.node.tryGetContext('appName');
 const env = app.node.tryGetContext('env');
+const githubOwner = app.node.tryGetContext('githubOwner');
+const branch = app.node.tryGetContext('branch');
 
 new BackendStack(app, `${appName}-${stackName}-${env}`, {
   env: {
@@ -24,14 +26,19 @@ new BackendStack(app, `${appName}-${stackName}-${env}`, {
     domain: 'yoshinori-satoh.com',
     subDomain: 'app'
   },
+  git: {
+    owner: githubOwner,
+    repo: appName,
+    branch: branch
+  },
   ecr: {
     nginx: {
       repositoryName: `${appName}-nginx`,
-      tag: env
+      dockerfile: 'Dockerfile.nginx'
     },
     laravel: {
       repositoryName: appName,
-      tag: env,
+      dockerfile: 'Dockerfile'
     }
   },
   acm: {

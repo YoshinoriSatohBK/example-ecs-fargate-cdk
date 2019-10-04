@@ -21,12 +21,10 @@ new BackendCiStack(app, `${appName}-${stackName}-${env}`, {
   ecr: {
     nginx: {
       repositoryName: `${appName}-nginx`,
-      tag: env,
       dockerfile: 'Dockerfile.nginx'
     },
     laravel: {
       repositoryName: appName,
-      tag: env,
       dockerfile: 'Dockerfile'
     }
   },

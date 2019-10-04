@@ -5,6 +5,9 @@ import ecs = require('@aws-cdk/aws-ecs');
 import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
 import route53 = require('@aws-cdk/aws-route53');
 import targets = require('@aws-cdk/aws-route53-targets/lib');
+import ecr = require('@aws-cdk/aws-ecr');
+import codepipeline = require('@aws-cdk/aws-codepipeline');
+import codepipelineActions = require('@aws-cdk/aws-codepipeline-actions');
 
 export interface FargateServiceProps {
   vpc: ec2.IVpc;
@@ -21,12 +24,13 @@ export interface FargateServiceProps {
 }
 
 export class FargateService extends Construct {
+  readonly service: ecs.FargateService;
 
   constructor(parent: Construct, name: string, props: FargateServiceProps) {
     super(parent, name);
 
     // Service
-    const service = new ecs.FargateService(parent, 'FargateService', {
+    this.service = new ecs.FargateService(parent, 'FargateService', {
       cluster: props.ecsCluster,
       taskDefinition: props.taskDefinition,
       desiredCount: 1,
@@ -63,7 +67,7 @@ export class FargateService extends Construct {
       port: 80,
       targetGroupName: 'target-group-blue',
       targetType: elbv2.TargetType.IP,
-      targets: [service]
+      targets: [this.service]
     });
     const listener = alb.addListener('Listener', {
       protocol: elbv2.ApplicationProtocol.HTTPS,
@@ -76,7 +80,7 @@ export class FargateService extends Construct {
     listener.addCertificateArns('ALBCertificate', props.acm.certificateArns);
 
     // Set sequrity group from alb to fargate service
-    service.connections.allowFrom(alb, new ec2.Port({
+    this.service.connections.allowFrom(alb, new ec2.Port({
       protocol: ec2.Protocol.TCP,
       stringRepresentation: 'task container access',
       fromPort: 80,

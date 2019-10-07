@@ -7,7 +7,7 @@ cdk deploy -y \
   -c account=539459320497 \
   -c region=ap-northeast-1 \
   -c domainName=example \
-  -c appName=laravel-appd \
+  -c appName=laravel-app \
   -c env=dev \
   -c branch=develop \
   -c githubOwner=YoshinoriSatoh

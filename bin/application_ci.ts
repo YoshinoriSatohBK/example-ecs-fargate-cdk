@@ -13,43 +13,53 @@ const env = app.node.tryGetContext('env');
 const branch = app.node.tryGetContext('branch');
 const githubOwner = app.node.tryGetContext('githubOwner');
 
+const gitSshkey = cdk.SecretValue.secretsManager(`github-sshkey`);
+const oauthToken = cdk.SecretValue.secretsManager(`/${appName}/${env}`, {
+  jsonField: 'github-token'
+});
+
 new ApplicationCiEcrStack(app, `${domainName}-${appName}-${env}`, {
   env: {
     account: account,
     region: region
   },
-  git: {
+  source: {
     owner: githubOwner,
-    repo: appName,
+    repo: `laravel-app`,
     branch: branch,
-    oauthToken: cdk.SecretValue.secretsManager(`/${appName}/${env}`, {
-      jsonField: 'github-token'
-    })
+    oauthToken: oauthToken,
   },
   builds: [
     {
-      repositoryName: `${appName}-nginx`,
+      repositoryName: `laravel-app-nginx`,
       dockerfile: 'Dockerfile.nginx',
       environment: {
-        buildImage: codebuild.LinuxBuildImage.UBUNTU_14_04_DOCKER_18_09_0,
+        buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,
         computeType: codebuild.ComputeType.SMALL,
         privileged: true
       }
     },
-    // {
-    //   repositoryName: appName,
-    //   dockerfile: 'Dockerfile',
-    //   environment: {
-    //     buildImage: codebuild.LinuxBuildImage.UBUNTU_14_04_DOCKER_18_09_0,
-    //     computeType: codebuild.ComputeType.SMALL,
-    //     privileged: true
-    //   }
-    // }
+    {
+      repositoryName: 'laravel-app',
+      dockerfile: 'Dockerfile',
+      environment: {
+        buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,
+        computeType: codebuild.ComputeType.SMALL,
+        privileged: true
+      }
+    }
   ],
   deploies: [
     {
+      opsGitRepo: {
+        owner: githubOwner,
+        repo: `example-ecs-fargate-cd`,
+        branch: branch,
+        oauthToken: oauthToken,
+        sshKey: gitSshkey.toString(),
+      },
       environment: {
-        buildImage: codebuild.LinuxBuildImage.UBUNTU_14_04_DOCKER_18_09_0,
+        buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,
         computeType: codebuild.ComputeType.SMALL,
         privileged: true
       }

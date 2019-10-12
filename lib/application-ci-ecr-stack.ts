@@ -1,68 +1,72 @@
 import cdk = require('@aws-cdk/core');
-import { App, Stack, StackProps, Construct, SecretValue } from '@aws-cdk/core';
 import ecr = require('@aws-cdk/aws-ecr');
 import codebuild = require('@aws-cdk/aws-codebuild');
 import codepipeline = require('@aws-cdk/aws-codepipeline');
 import codepipeline_actions = require('@aws-cdk/aws-codepipeline-actions');
 import iam = require('@aws-cdk/aws-iam');
 
-interface Git{
+type Git = {
   owner: string;
   repo: string;
   branch: string;
-  oauthToken: SecretValue;
+  oauthToken: cdk.SecretValue;
   sshKey?: string;
 }
 
-interface Build{
+type Build = {
   repositoryName: string;
   dockerfile: string;
   environment: any;
 }
 
-interface Deploy{
-  opsGitRepo: Git;
+type PrepareDeploy = {
+  cdGit: Git;
   environment: any;
 }
 
-interface ApplicationCiEcrProps extends StackProps {
-  source: Git;
+type ApplicationCiEcrProps = cdk.StackProps & {
+  serviceName: string;
+  source: {
+    git: Git;
+  };
   builds: Array<Build>;
-  deploies: Array<Deploy>;
+  deploy: PrepareDeploy;
 }
 
-export class ApplicationCiEcrStack extends Stack {
-  constructor(app: App, name: string, props: ApplicationCiEcrProps) {
+export class ApplicationCiEcrStack extends cdk.Stack {
+  constructor(app: cdk.App, name: string, props: ApplicationCiEcrProps) {
     super(app, name, props);
 
-    // Service role for codepipeline.
-    const codePipelineRole = new iam.Role(this, `${name}-CodePipelineRole`, {
-      assumedBy: new iam.ServicePrincipal('codepipeline.amazonaws.com')
-    });
-    codePipelineRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess'));
-
     // Service role for codebuild.
-    const codeBuildRole = new iam.Role(this, `${name}-CodeBuildRole`, {
-      assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com')
+    const codeBuildRole = new iam.Role(this, `${props.serviceName}-CodeBuildRole`, {
+      assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess')
+      ]
     });
-    codeBuildRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess'));
 
     // Codepipeline artifacts.
     //const cdkSourceArtifact = new codepipeline.Artifact('CDK_SOURCE');
     const applicationSourceArtifact = new codepipeline.Artifact('APPLICATION_SOURCE');
-    const pipeline = new codepipeline.Pipeline(this, `${name}-CodePipiline`, {
-      role: codePipelineRole,
+    const pipeline = new codepipeline.Pipeline(this, `${props.serviceName}-CodePipiline`, {
+      pipelineName: `${props.serviceName}-pipeline`,
+      role: new iam.Role(this, `${props.serviceName}-CodePipelineRole`, {
+        assumedBy: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess')
+        ]
+      }),
       stages: [
         {
           stageName: 'Source',
           actions: [
             new codepipeline_actions.GitHubSourceAction({
-              actionName: `${name}-application-Source`,
-              owner: props.source.owner,
-              repo: props.source.repo,
-              oauthToken: props.source.oauthToken,
+              actionName: `${props.serviceName}-application-Source`,
+              owner: props.source.git.owner,
+              repo: props.source.git.repo,
+              oauthToken: props.source.git.oauthToken,
+              branch: props.source.git.branch,
               output: applicationSourceArtifact,
-              branch: props.source.branch,
               trigger: codepipeline_actions.GitHubTrigger.WEBHOOK
             })
           ]
@@ -70,40 +74,32 @@ export class ApplicationCiEcrStack extends Stack {
         {
           stageName: 'Build',
           actions: props.builds.map(build => {
-            return new ImageBuild(this, `${name}-Build-${build.repositoryName}`, {
+            return this.imageBuildAction({
               build: build,
               input: applicationSourceArtifact,
               codeBuildRole: codeBuildRole
-            }).codeBuildAction
+            })
           })
         },
         {
           stageName: 'PrepareDeploy',
-          actions: props.deploies.map(deploy => {
-            return new ImageDeploy(this, `${name}-PrepareDeploy`, {
-              deploy: deploy,
+          actions: [
+            this.prepareDepoyBuildAction({
+              deploy: props.deploy,
               input: applicationSourceArtifact,
               codeBuildRole: codeBuildRole
-            }).codeBuildAction
-          })
+            })
+          ]
         }
       ]
     })
   }
-}
 
-interface ImageBuildProps{
-  build: Build;
-  input: codepipeline.Artifact;
-  codeBuildRole: iam.Role;
-}
-
-export class ImageBuild extends Construct {
-  readonly codeBuildAction: codepipeline_actions.CodeBuildAction;
-
-  constructor(scope: Construct, name: string, props: ImageBuildProps) {
-    super(scope, name);
-
+  private imageBuildAction(props: {
+    build: Build,
+    input: codepipeline.Artifact,
+    codeBuildRole: iam.Role,
+  }): codepipeline_actions.CodeBuildAction {
     // Buildspec for ImageBuild action.
     const buildspec = {
       version: '0.2',
@@ -133,23 +129,23 @@ export class ImageBuild extends Construct {
       }
     }
 
-    this.codeBuildAction = new codepipeline_actions.CodeBuildAction({
-      actionName: `${name}-ImageBuild-${props.build.repositoryName}`,
-      project: new codebuild.PipelineProject(this, `${name}-CodebuildProject-${props.build.repositoryName}`, {
+    return new codepipeline_actions.CodeBuildAction({
+      actionName: `${props.build.repositoryName}-ImageBuild`,
+      project: new codebuild.PipelineProject(this, `${props.build.repositoryName}-CodebuildProject`, {
         role: props.codeBuildRole,
         environment: props.build.environment,
         environmentVariables: {
           AWS_ACCOUNT_ID: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: scope.node.tryGetContext('account')
+            value: this.node.tryGetContext('account')
           },
           AWS_REGION: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: scope.node.tryGetContext('region')
+            value: this.node.tryGetContext('region')
           },
           ENV: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: scope.node.tryGetContext('env')
+            value: this.node.tryGetContext('env')
           },
           REPO_NAME: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
@@ -166,22 +162,12 @@ export class ImageBuild extends Construct {
       input: props.input
     })
   }
-}
 
-
-
-interface ImageDeployProps{
-  deploy: Deploy;
-  input: codepipeline.Artifact;
-  codeBuildRole: iam.Role;
-}
-
-export class ImageDeploy extends Construct {
-  readonly codeBuildAction: codepipeline_actions.CodeBuildAction;
-
-  constructor(scope: Construct, name: string, props: ImageDeployProps) {
-    super(scope, name);
-
+  private prepareDepoyBuildAction(props: {
+    deploy: PrepareDeploy,
+    input: codepipeline.Artifact,
+    codeBuildRole: iam.Role
+  }): codepipeline_actions.CodeBuildAction {
     const buildspec = {
       version: "0.2",
       phases: {
@@ -227,47 +213,47 @@ export class ImageDeploy extends Construct {
       }
     }
 
-    this.codeBuildAction = new codepipeline_actions.CodeBuildAction({
-      actionName: `${name}-PrepareDeploy`,
-      project: new codebuild.PipelineProject(this, `${name}-CodebuildProject-PrepareDeploy`, {
+    return new codepipeline_actions.CodeBuildAction({
+      actionName: `PrepareDeploy`,
+      project: new codebuild.PipelineProject(this, `CodebuildProject-PrepareDeploy`, {
         role: props.codeBuildRole,
         environment: props.deploy.environment,
         environmentVariables: {
           AWS_ACCOUNT_ID: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: scope.node.tryGetContext('account')
+            value: this.node.tryGetContext('account')
           },
           AWS_REGION: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: scope.node.tryGetContext('region')
+            value: this.node.tryGetContext('region')
           },
           ENV: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: scope.node.tryGetContext('env')
+            value: this.node.tryGetContext('env')
           },
           APP_NAME: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: scope.node.tryGetContext('appName')
+            value: this.node.tryGetContext('appName')
           },
           GIT_OWNER: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.opsGitRepo.owner
+            value: props.deploy.cdGit.owner
           },
           GIT_REPO: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.opsGitRepo.repo
+            value: props.deploy.cdGit.repo
           },
           GIT_BRANCH: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.opsGitRepo.branch
+            value: props.deploy.cdGit.branch
           },
           GIT_SSHKEY: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.opsGitRepo.sshKey
+            value: props.deploy.cdGit.sshKey
           },
           GITHUB_TOKEN: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.opsGitRepo.oauthToken
+            value: props.deploy.cdGit.oauthToken
           }
         },
         buildSpec: codebuild.BuildSpec.fromObject(buildspec)

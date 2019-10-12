@@ -14,23 +14,23 @@ export interface RdsProps {
 export class Mysql extends Construct {
   readonly databaseInstance: rds.IDatabaseInstance;
 
-  constructor(parent: Construct, name: string, props: RdsProps) {
-    super(parent, name);
+  constructor(scope: Construct, name: string, props: RdsProps) {
+    super(scope, name);
 
-    const optionGroup = new rds.OptionGroup(parent, 'MysqlOptionGroup', {
+    const optionGroup = new rds.OptionGroup(scope, 'MysqlOptionGroup', {
       engine: rds.DatabaseInstanceEngine.MYSQL,
       majorEngineVersion: '5.7',
       configurations: []
     });
 
-    const parameterGroup = new rds.ParameterGroup(parent, 'MysqlParameterGroup', {
+    const parameterGroup = new rds.ParameterGroup(scope, 'MysqlParameterGroup', {
       family: 'mysql5.7',
       parameters: {}
     });
 
-    if (parent.node.tryGetContext('env') === 'prod') {
-      this.databaseInstance = new rds.DatabaseInstance(parent, 'MysqlInstance', {
-        instanceIdentifier: parent.node.tryGetContext('appName'),
+    if (scope.node.tryGetContext('env') === 'prod') {
+      this.databaseInstance = new rds.DatabaseInstance(scope, 'MysqlInstance', {
+        instanceIdentifier: scope.node.tryGetContext('appName'),
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.R5, ec2.InstanceSize.LARGE),
         engineVersion: '5.7.22',
@@ -53,8 +53,8 @@ export class Mysql extends Construct {
       });
 
     } else {
-      this.databaseInstance = new rds.DatabaseInstance(parent, 'MysqlInstance', {
-        instanceIdentifier: parent.node.tryGetContext('appName'),
+      this.databaseInstance = new rds.DatabaseInstance(scope, 'MysqlInstance', {
+        instanceIdentifier: scope.node.tryGetContext('appName'),
         engine: rds.DatabaseInstanceEngine.MYSQL,
         instanceClass: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
         engineVersion: '5.7.22',

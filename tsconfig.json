@@ -16,8 +16,8 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization":false
+    "strictPropertyInitialization":false,
+    "typeRoots": ["./node_modules/@types"]
   },
-  "exclude": ["bin/cdk.out"]
+  "exclude": ["cdk.out"]
 }
-

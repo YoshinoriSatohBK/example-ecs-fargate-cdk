@@ -17,8 +17,8 @@ export class ContentsDelivery extends Construct {
   readonly bucketName: string;
   readonly distributionId: string;
 
-  constructor(parent: Construct, name: string, props: ContentsDeliveryProps) {
-    super(parent, name);
+  constructor(scope: Construct, name: string, props: ContentsDeliveryProps) {
+    super(scope, name);
 
     const siteDomain = props.siteSubDomain + '.' + props.domainName;
 

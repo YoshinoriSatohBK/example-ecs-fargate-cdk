@@ -10,6 +10,8 @@ type SecretGit = {
   oAuthToken: cdk.SecretValue;
   owner: string;
   branch: string;
+  email?: string;
+  name?: string;
 }
 
 export class Secrets {
@@ -36,8 +38,10 @@ export class Secrets {
           sshkey: cdk.SecretValue.secretsManager(`${secretKeyBase}/GitSshkey`).toString(),
           oAuthToken: cdk.SecretValue.secretsManager(secretKeyBase, { jsonField: 'GithubToken' }),
           owner: cdk.SecretValue.secretsManager(secretKeyBase, { jsonField: 'CdGitOwner' }).toString(),
-          branch: cdk.SecretValue.secretsManager(secretKeyBase, { jsonField: 'CdGitBranch' }).toString()
-        }
+          branch: cdk.SecretValue.secretsManager(secretKeyBase, { jsonField: 'CdGitBranch' }).toString(),
+          email: cdk.SecretValue.secretsManager(secretKeyBase, { jsonField: 'CdGitEmail' }).toString(),
+          name: cdk.SecretValue.secretsManager(secretKeyBase, { jsonField: 'CdGitName' }).toString()
+        },
       }
     }
 
@@ -48,8 +52,8 @@ export class Secrets {
         laravel: {
           git: {
             oAuthToken: cdk.SecretValue.secretsManager(secretKeyLaravel, { jsonField: 'GithubToken' }),
-            owner: cdk.SecretValue.secretsManager(secretKeyLaravel, { jsonField: 'CdGitOwner' }).toString(),
-            branch: cdk.SecretValue.secretsManager(secretKeyLaravel, { jsonField: 'CdGitBranch' }).toString()
+            owner: cdk.SecretValue.secretsManager(secretKeyLaravel, { jsonField: 'GitOwner' }).toString(),
+            branch: cdk.SecretValue.secretsManager(secretKeyLaravel, { jsonField: 'GitBranch' }).toString()
           }
         }
       }

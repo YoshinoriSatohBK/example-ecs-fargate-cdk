@@ -3,6 +3,7 @@ FROM gitpod/workspace-full
 USER root
 
 USER gitpod
+RUN pip3 install awscli --upgrade --user
 RUN npm install -g aws-cdk && yarn
 
 # Install custom tools, runtime, etc. using apt-get

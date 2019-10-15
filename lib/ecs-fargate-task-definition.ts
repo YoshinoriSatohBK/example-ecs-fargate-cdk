@@ -41,7 +41,8 @@ export class EcsFargateTaskDefinition extends cdk.Construct {
     const env = scope.node.tryGetContext('env');
 
     // Task Definition
-    this.taskDefinition = new ecs.FargateTaskDefinition(this, `${props.family}-EcsFargateTaskDefinition`, Object.assign({}, props, {
+    this.taskDefinition = new ecs.FargateTaskDefinition(this, `${props.family}-EcsFargateTaskDefinition2`, Object.assign({}, props, {
+      family: `${props.family}-${env}`,
       executionRole: new iam.Role(this, `${props.family}-EcsFargateTaskDefinitionTaskExecutionRole`, {
         assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
         managedPolicies: [
@@ -59,7 +60,7 @@ export class EcsFargateTaskDefinition extends cdk.Construct {
     // Add container images to Task Definition
     props.containers.forEach(container => {
       const ecrRepository = ecr.Repository.fromRepositoryName(scope, `${container.name}-EcrRepository`, container.ecr.repositoryName);
-      const containerDefinition = this.taskDefinition.addContainer(`${container.name}-ContainerDefinition`, Object.assign({}, container, {
+      const containerDefinition = this.taskDefinition.addContainer(container.name, Object.assign({}, container, {
         image: ecs.ContainerImage.fromEcrRepository(ecrRepository, container.ecr.imageTag),
         logging: new ecs.AwsLogDriver({
           logGroup: new logs.LogGroup(scope, `${container.name}-LogGroup`, {

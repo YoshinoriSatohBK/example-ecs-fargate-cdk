@@ -3,6 +3,7 @@ import 'source-map-support/register';
 import cdk = require('@aws-cdk/core');
 import ecs = require('@aws-cdk/aws-ecs');
 import codebuild = require('@aws-cdk/aws-codebuild');
+import secretsmanager = require('@aws-cdk/aws-secretsmanager');
 import changeCase = require('change-case');
 import { Secrets } from './secrets';
 import { BackendStack } from '../../lib/backend-stack';
@@ -16,6 +17,7 @@ const app = new cdk.App({
 const appName = app.node.tryGetContext('appName');
 const env = app.node.tryGetContext('env');
 const secrets = new Secrets(appName, env)
+
 const cdGitRepo = 'example-ecs-fargate-cd';
 
 new BackendStack(app, `${appName}-${env}`, {
@@ -79,7 +81,7 @@ new BackendStack(app, `${appName}-${env}`, {
               APP_URL: "https://app-yoshinori-satoh.com"
             },
             secrets: {
-              // APP_KEY: ecs.Secret.fromSecretsManager(secretsmanager.Secret.fromSecretAttributes(this, "ImportedSecret", {
+              // APP_KEY: ecs.Secret.fromSecretsManager(secretsmanager.Secret.fromSecretArn(app., "ImportedSecret", {
               //   secretArn: 'arn:aws:secretsmanager:ap-northeast-1:539459320497:secret:/develop/laravel-app-NAHynd'
               // }))
             }
@@ -111,9 +113,11 @@ new BackendStack(app, `${appName}-${env}`, {
       repo: cdGitRepo,
       branch: secrets.backend.cd.git.branch,
       oauthToken: secrets.backend.cd.git.oAuthToken
-    },
+    }
   }
 });
+
+
 
 const serviceNameLaravel = 'laravel-app';
 new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
@@ -156,7 +160,9 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
       repo: cdGitRepo,
       branch: secrets.backend.cd.git.branch,
       oauthToken: secrets.backend.cd.git.oAuthToken,
-      sshKey: secrets.backend.cd.git.sshkey
+      sshKey: secrets.backend.cd.git.sshkey,
+      email: secrets.backend.cd.git.email,
+      name: secrets.backend.cd.git.name
     },
     environment: {
       buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,
@@ -164,7 +170,6 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
       privileged: true
     }
   }
-
 });
 
 app.synth();

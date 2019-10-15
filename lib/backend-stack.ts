@@ -1,12 +1,15 @@
 import cdk = require('@aws-cdk/core');
 import ec2 = require('@aws-cdk/aws-ec2');
 import ecs = require('@aws-cdk/aws-ecs');
+import s3 = require('@aws-cdk/aws-s3');
+import kms = require('@aws-cdk/aws-kms');
 import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
 import route53 = require('@aws-cdk/aws-route53');
 import targets = require('@aws-cdk/aws-route53-targets/lib');
 import { Mysql } from './mysql';
 import { EcsFargateTaskDefinition, EcsFargateTaskDefinitionProps } from './ecs-fargate-task-definition';
 import { EcsFargateServiceCd, EcsFargateServiceCdProps } from './ecs-fargate-service-cd';
+import { S3Code } from '@aws-cdk/aws-lambda';
 
 export type GitRepository = {
   owner: string;
@@ -14,8 +17,6 @@ export type GitRepository = {
   branch: string;
   oauthToken: cdk.SecretValue;
 }
-
-
 
 type BackendProps = cdk.StackProps & {
   vpc: {
@@ -83,13 +84,13 @@ export class BackendStack extends cdk.Stack {
       ],
     });
 
-    // const rdsConstruct = new Mysql(this, 'Mysql', {
-    //   vpc,
-    //   rds: {
-    //     databaseName: props.rds.databaseName,
-    //     masterUsername: props.rds.masterUsername
-    //   }
-    // })
+    // // const rdsConstruct = new Mysql(this, 'Mysql', {
+    // //   vpc,
+    // //   rds: {
+    // //     databaseName: props.rds.databaseName,
+    // //     masterUsername: props.rds.masterUsername
+    // //   }
+    // // })
 
     const ecsCluster = new ecs.Cluster(this, `EcsCluster`, {
       clusterName: `${appName}-${env}`,
@@ -180,9 +181,10 @@ export class BackendStack extends cdk.Stack {
       });
 
       // ECS Service CD Pipeline
-      new EcsFargateServiceCd(this, `${service.ecsServiceProps.name}-FargateServiceCdLaravel`, {
+      new EcsFargateServiceCd(this, `${service.ecsServiceProps.name}-FargateServiceCd`, {
         git: props.cd.git,
-        service: ecsFargateService
+        service: ecsFargateService,
+        serviceName: service.ecsServiceProps.name
       });
     });
   }

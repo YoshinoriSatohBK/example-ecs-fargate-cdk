@@ -1,5 +1,7 @@
 import cdk = require('@aws-cdk/core');
 import ecr = require('@aws-cdk/aws-ecr');
+import s3 = require('@aws-cdk/aws-s3');
+import kms = require('@aws-cdk/aws-kms');
 import codebuild = require('@aws-cdk/aws-codebuild');
 import codepipeline = require('@aws-cdk/aws-codepipeline');
 import codepipeline_actions = require('@aws-cdk/aws-codepipeline-actions');
@@ -11,6 +13,8 @@ type Git = {
   branch: string;
   oauthToken: cdk.SecretValue;
   sshKey?: string;
+  email?: string;
+  name?: string;
 }
 
 type Build = {
@@ -37,8 +41,12 @@ export class ApplicationCiEcrStack extends cdk.Stack {
   constructor(app: cdk.App, name: string, props: ApplicationCiEcrProps) {
     super(app, name, props);
 
+    const appName = this.node.tryGetContext('appName');
+    const env = this.node.tryGetContext('env');
+
     // Service role for codebuild.
     const codeBuildRole = new iam.Role(this, `${props.serviceName}-CodeBuildRole`, {
+      roleName: `${appName}-${name}-${env}-codebuild-role`,
       assumedBy: new iam.ServicePrincipal('codebuild.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess')
@@ -46,11 +54,18 @@ export class ApplicationCiEcrStack extends cdk.Stack {
     });
 
     // Codepipeline artifacts.
-    //const cdkSourceArtifact = new codepipeline.Artifact('CDK_SOURCE');
-    const applicationSourceArtifact = new codepipeline.Artifact('APPLICATION_SOURCE');
-    const pipeline = new codepipeline.Pipeline(this, `${props.serviceName}-CodePipiline`, {
-      pipelineName: `${props.serviceName}-pipeline`,
-      role: new iam.Role(this, `${props.serviceName}-CodePipelineRole`, {
+    const sourceArtifact = new codepipeline.Artifact('source');
+    const pipeline = new codepipeline.Pipeline(this, `${props.serviceName}-build-CodePipiline`, {
+      artifactBucket: new s3.Bucket(this, `${props.serviceName}-build-ArtifactBucket`, {
+        bucketName: `${appName}-${props.serviceName}-${env}-build-artifact`,
+        encryptionKey: new kms.Key(this, `${props.serviceName}-build-EncryptionKey`, {
+          alias: `${appName}-${props.serviceName}-build-${env}`,
+          removalPolicy: cdk.RemovalPolicy.DESTROY
+        })
+      }),
+      pipelineName: `${appName}-${props.serviceName}-${env}-build-pipeline`,
+      role: new iam.Role(this, `${appName}-${props.serviceName}-${env}-CodePipelineRole`, {
+        roleName: `${appName}-${name}-${env}-build-pipeline-Role`,
         assumedBy: new iam.ServicePrincipal('codepipeline.amazonaws.com'),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName('PowerUserAccess')
@@ -66,7 +81,7 @@ export class ApplicationCiEcrStack extends cdk.Stack {
               repo: props.source.git.repo,
               oauthToken: props.source.git.oauthToken,
               branch: props.source.git.branch,
-              output: applicationSourceArtifact,
+              output: sourceArtifact,
               trigger: codepipeline_actions.GitHubTrigger.WEBHOOK
             })
           ]
@@ -75,8 +90,9 @@ export class ApplicationCiEcrStack extends cdk.Stack {
           stageName: 'Build',
           actions: props.builds.map(build => {
             return this.imageBuildAction({
+              serviceName: props.serviceName,
               build: build,
-              input: applicationSourceArtifact,
+              input: sourceArtifact,
               codeBuildRole: codeBuildRole
             })
           })
@@ -85,8 +101,9 @@ export class ApplicationCiEcrStack extends cdk.Stack {
           stageName: 'PrepareDeploy',
           actions: [
             this.prepareDepoyBuildAction({
+              serviceName: props.serviceName,
               deploy: props.deploy,
-              input: applicationSourceArtifact,
+              input: sourceArtifact,
               codeBuildRole: codeBuildRole
             })
           ]
@@ -96,6 +113,7 @@ export class ApplicationCiEcrStack extends cdk.Stack {
   }
 
   private imageBuildAction(props: {
+    serviceName: string,
     build: Build,
     input: codepipeline.Artifact,
     codeBuildRole: iam.Role,
@@ -164,6 +182,7 @@ export class ApplicationCiEcrStack extends cdk.Stack {
   }
 
   private prepareDepoyBuildAction(props: {
+    serviceName: string,
     deploy: PrepareDeploy,
     input: codepipeline.Artifact,
     codeBuildRole: iam.Role
@@ -180,8 +199,8 @@ export class ApplicationCiEcrStack extends cdk.Stack {
             "echo \"$GIT_SSHKEY\" > ~/.ssh/id_rsa",
             "chmod 600 ~/.ssh/id_rsa",
             "ssh-keygen -F github.com || ssh-keyscan github.com >>~/.ssh/known_hosts",
-            'git config --global user.email "yoshinori.satoh.tokyo@gmail.com"',
-            'git config --global user.name "deployer"',
+            'git config --global user.email ${GITHUB_EMAIL}',
+            'git config --global user.name ${GITHUB_NAME}',
             "apt-get install wget",
             "wget https://github.com/github/hub/releases/download/v2.12.8/hub-linux-amd64-2.12.8.tgz",
             "tar -xzvf hub-linux-amd64-2.12.8.tgz",
@@ -198,7 +217,7 @@ export class ApplicationCiEcrStack extends cdk.Stack {
             "git clone git@github.com:${GIT_OWNER}/${GIT_REPO}.git",
             "cd ${GIT_REPO}",
             "git checkout -b deploy/${IMAGE_TAG}",
-            "cd ${APP_NAME}",
+            "cd ecs/${SERVICE_NAME}",
             "sed -i -e \"s/\\\"imageUri\\\": \\(.*\\):.*/\\\"imageUri\\\": \\1:${IMAGE_TAG}/g\" imagedefinitions.json",
             "git add imagedefinitions.json"
           ]
@@ -235,6 +254,10 @@ export class ApplicationCiEcrStack extends cdk.Stack {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
             value: this.node.tryGetContext('appName')
           },
+          SERVICE_NAME: {
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+            value: props.serviceName
+          },
           GIT_OWNER: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
             value: props.deploy.cdGit.owner
@@ -254,6 +277,14 @@ export class ApplicationCiEcrStack extends cdk.Stack {
           GITHUB_TOKEN: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
             value: props.deploy.cdGit.oauthToken
+          },
+          GITHUB_EMAIL: {
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+            value: props.deploy.cdGit.email
+          },
+          GITHUB_NAME: {
+            type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
+            value: props.deploy.cdGit.name
           }
         },
         buildSpec: codebuild.BuildSpec.fromObject(buildspec)

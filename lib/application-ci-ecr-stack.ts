@@ -1,21 +1,12 @@
 import cdk = require('@aws-cdk/core');
 import ecr = require('@aws-cdk/aws-ecr');
+import ssm = require('@aws-cdk/aws-ssm');
 import s3 = require('@aws-cdk/aws-s3');
 import kms = require('@aws-cdk/aws-kms');
 import codebuild = require('@aws-cdk/aws-codebuild');
 import codepipeline = require('@aws-cdk/aws-codepipeline');
 import codepipeline_actions = require('@aws-cdk/aws-codepipeline-actions');
 import iam = require('@aws-cdk/aws-iam');
-
-type Git = {
-  owner: string;
-  repo: string;
-  branch: string;
-  oauthToken: cdk.SecretValue;
-  sshKey?: string;
-  email?: string;
-  name?: string;
-}
 
 type Build = {
   repositoryName: string;
@@ -24,14 +15,29 @@ type Build = {
 }
 
 type PrepareDeploy = {
-  cdGit: Git;
+  git: {
+    owner: ssm.StringParameterAttributes;
+    repo: ssm.StringParameterAttributes;
+    branch: ssm.StringParameterAttributes;
+    oauthToken: ssm.SecureStringParameterAttributes;
+    config: {
+      name: ssm.StringParameterAttributes;
+      email: ssm.StringParameterAttributes;
+    }
+    sshKey: ssm.SecureStringParameterAttributes;
+  };
   environment: any;
 }
 
 type ApplicationCiEcrProps = cdk.StackProps & {
   serviceName: string;
   source: {
-    git: Git;
+    git: {
+      owner: ssm.StringParameterAttributes;
+      repo: ssm.StringParameterAttributes;
+      branch: ssm.StringParameterAttributes;
+      oauthToken: ssm.SecureStringParameterAttributes;
+    };
   };
   builds: Array<Build>;
   deploy: PrepareDeploy;
@@ -77,10 +83,10 @@ export class ApplicationCiEcrStack extends cdk.Stack {
           actions: [
             new codepipeline_actions.GitHubSourceAction({
               actionName: `${props.serviceName}-application-Source`,
-              owner: props.source.git.owner,
-              repo: props.source.git.repo,
-              oauthToken: props.source.git.oauthToken,
-              branch: props.source.git.branch,
+              owner: ssm.StringParameter.valueForStringParameter(this, props.source.git.owner.parameterName, props.source.git.owner.version),
+              repo: ssm.StringParameter.valueForStringParameter(this, props.source.git.repo.parameterName, props.source.git.repo.version),
+              branch: ssm.StringParameter.valueForStringParameter(this, props.source.git.branch.parameterName, props.source.git.branch.version),
+              oauthToken: cdk.SecretValue.ssmSecure(props.source.git.oauthToken.parameterName, props.source.git.oauthToken.version.toString()),
               output: sourceArtifact,
               trigger: codepipeline_actions.GitHubTrigger.WEBHOOK
             })
@@ -232,6 +238,14 @@ export class ApplicationCiEcrStack extends cdk.Stack {
       }
     }
 
+
+    const owner = ssm.StringParameter.valueForStringParameter(this, props.deploy.git.owner.parameterName, props.deploy.git.owner.version);
+    const repo = ssm.StringParameter.valueForStringParameter(this, props.deploy.git.repo.parameterName, props.deploy.git.repo.version);
+    const branch = ssm.StringParameter.valueForStringParameter(this, props.deploy.git.branch.parameterName, props.deploy.git.branch.version);
+    const oauthToken = cdk.SecretValue.ssmSecure(props.deploy.git.oauthToken.parameterName, props.deploy.git.oauthToken.version.toString());
+    const name = ssm.StringParameter.valueForStringParameter(this, props.deploy.git.config.name.parameterName, props.deploy.git.config.name.version);
+    const email = ssm.StringParameter.valueForStringParameter(this, props.deploy.git.config.email.parameterName, props.deploy.git.config.email.version);
+    const sshKey = cdk.SecretValue.ssmSecure(props.deploy.git.sshKey.parameterName, props.deploy.git.sshKey.version.toString());
     return new codepipeline_actions.CodeBuildAction({
       actionName: `PrepareDeploy`,
       project: new codebuild.PipelineProject(this, `CodebuildProject-PrepareDeploy`, {
@@ -260,31 +274,31 @@ export class ApplicationCiEcrStack extends cdk.Stack {
           },
           GIT_OWNER: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.cdGit.owner
+            value: owner
           },
           GIT_REPO: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.cdGit.repo
+            value: repo
           },
           GIT_BRANCH: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.cdGit.branch
+            value: branch
           },
           GIT_SSHKEY: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.cdGit.sshKey
+            value: sshKey
           },
           GITHUB_TOKEN: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.cdGit.oauthToken
+            value: oauthToken
           },
           GITHUB_EMAIL: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.cdGit.email
+            value: email
           },
           GITHUB_NAME: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: props.deploy.cdGit.name
+            value: name
           }
         },
         buildSpec: codebuild.BuildSpec.fromObject(buildspec)

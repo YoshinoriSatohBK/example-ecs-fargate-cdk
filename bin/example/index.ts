@@ -3,9 +3,8 @@ import 'source-map-support/register';
 import cdk = require('@aws-cdk/core');
 import ecs = require('@aws-cdk/aws-ecs');
 import codebuild = require('@aws-cdk/aws-codebuild');
-import secretsmanager = require('@aws-cdk/aws-secretsmanager');
 import changeCase = require('change-case');
-import { Secrets } from './secrets';
+import { SsmParameter } from './ssm-parameter';
 import { BackendStack } from '../../lib/backend-stack';
 import { ApplicationCiEcrStack } from '../../lib/application-ci-ecr-stack';
 
@@ -14,11 +13,10 @@ const app = new cdk.App({
     appName: 'example'
   }
 });
+
 const appName = app.node.tryGetContext('appName');
 const env = app.node.tryGetContext('env');
-const secrets = new Secrets(appName, env)
-
-const cdGitRepo = 'example-ecs-fargate-cd';
+const ssmParameter = new SsmParameter(appName, env);
 
 new BackendStack(app, `${appName}-${env}`, {
   env: {
@@ -74,16 +72,19 @@ new BackendStack(app, `${appName}-${env}`, {
               }
             ],
             environment: {
-              APP_DEBUG: env === 'prod' ? 'false' : 'true',
-              APP_NAME: 'Laravel',
-              APP_ENV: env,
-              APP_KEY: "base64:1B+4kHLo7Qwn+mSDD/f/Q1RsCwXztUikdb5j8gJ3hkw=",
-              APP_URL: "https://app-yoshinori-satoh.com"
+              value: {
+                APP_ENV: env,
+              },
+              ssmParameter: {
+                APP_DEBUG: ssmParameter.app.laravel.environment.appDebug,
+                APP_NAME: ssmParameter.app.laravel.environment.appName,
+                APP_URL: ssmParameter.app.laravel.environment.appUrl
+              }
             },
             secrets: {
-              // APP_KEY: ecs.Secret.fromSecretsManager(secretsmanager.Secret.fromSecretArn(app., "ImportedSecret", {
-              //   secretArn: 'arn:aws:secretsmanager:ap-northeast-1:539459320497:secret:/develop/laravel-app-NAHynd'
-              // }))
+              ssmParameter: {
+                APP_KEY: ssmParameter.app.laravel.secrets.appKey
+              }
             }
           },
           {
@@ -100,8 +101,16 @@ new BackendStack(app, `${appName}-${env}`, {
                 protocol: ecs.Protocol.TCP
               }
             ],
-            environment: {},
-            secrets: {}
+            environment: {
+              value: {
+              },
+              ssmParameter: {
+              }
+            },
+            secrets: {
+              ssmParameter: {
+              }
+            }
           }
         ]
       }
@@ -109,14 +118,13 @@ new BackendStack(app, `${appName}-${env}`, {
   ],
   cd: {
     git: {
-      owner: secrets.backend.cd.git.owner,
-      repo: cdGitRepo,
-      branch: secrets.backend.cd.git.branch,
-      oauthToken: secrets.backend.cd.git.oAuthToken
+      owner: ssmParameter.cd.git.owner,
+      repo: ssmParameter.cd.git.repo,
+      branch: ssmParameter.cd.git.branch,
+      oauthToken: ssmParameter.cd.git.oAuthToken,
     }
   }
 });
-
 
 
 const serviceNameLaravel = 'laravel-app';
@@ -128,10 +136,10 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
   serviceName: serviceNameLaravel,
   source: {
     git: {
-      owner: secrets.application.ci.laravel.git.owner,
-      repo: serviceNameLaravel,
-      branch: secrets.application.ci.laravel.git.branch,
-      oauthToken: secrets.application.ci.laravel.git.oAuthToken
+      owner: ssmParameter.app.laravel.git.owner,
+      repo: ssmParameter.app.laravel.git.repo,
+      branch: ssmParameter.app.laravel.git.branch,
+      oauthToken: ssmParameter.app.laravel.git.oAuthToken,
     }
   },
   builds: [
@@ -155,14 +163,16 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
     }
   ],
   deploy: {
-    cdGit: {
-      owner: secrets.backend.cd.git.owner,
-      repo: cdGitRepo,
-      branch: secrets.backend.cd.git.branch,
-      oauthToken: secrets.backend.cd.git.oAuthToken,
-      sshKey: secrets.backend.cd.git.sshkey,
-      email: secrets.backend.cd.git.email,
-      name: secrets.backend.cd.git.name
+    git: {
+      owner: ssmParameter.cd.git.owner,
+      repo: ssmParameter.cd.git.repo,
+      branch: ssmParameter.cd.git.branch,
+      oauthToken: ssmParameter.cd.git.oAuthToken,
+      config: {
+        name: ssmParameter.cd.git.config.name,
+        email: ssmParameter.cd.git.config.email,
+      },
+      sshKey: ssmParameter.cd.git.sshKey,
     },
     environment: {
       buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,

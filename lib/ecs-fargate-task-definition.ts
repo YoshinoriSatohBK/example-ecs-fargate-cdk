@@ -1,6 +1,7 @@
 import cdk = require('@aws-cdk/core');
 import ecs = require('@aws-cdk/aws-ecs');
 import ecr = require('@aws-cdk/aws-ecr');
+import ssm = require('@aws-cdk/aws-ssm');
 import logs = require('@aws-cdk/aws-logs');
 import iam = require('@aws-cdk/aws-iam');
 import { ManagedPolicy } from '@aws-cdk/aws-iam';
@@ -11,11 +12,18 @@ type ContainerDefinitionProps = {
   memoryLimitMiB?: number;
   memoryReservationMiB?: number;
   workingDirectory?: string;
-  environment?: {
-    [key: string]: string;
+  environment: {
+    value: {
+      [key: string]: string;
+    }
+    ssmParameter: {
+      [key: string]: ssm.StringParameterAttributes;
+    }
   };
-  secrets?: {
-    [key: string]: ecs.Secret;
+  secrets: {
+    ssmParameter: {
+      [key: string]: ssm.SecureStringParameterAttributes;
+    }
   };
   ecr: {
     repositoryName: string;

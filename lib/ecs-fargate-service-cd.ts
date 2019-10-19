@@ -5,11 +5,17 @@ import kms = require('@aws-cdk/aws-kms');
 import codepipeline = require('@aws-cdk/aws-codepipeline');
 import codepipeline_actions = require('@aws-cdk/aws-codepipeline-actions');
 import iam = require('@aws-cdk/aws-iam');
-import { GitRepository } from './backend-stack'
 import { GitHubSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 
+export type EcsFargateServiceCdGit = {
+  owner: string;
+  repo: string;
+  branch: string;
+  oauthToken: cdk.SecretValue;
+}
+
 export type EcsFargateServiceCdProps = {
-  git: GitRepository;
+  git: EcsFargateServiceCdGit;
   service: ecs.FargateService;
   serviceName: string;
 }

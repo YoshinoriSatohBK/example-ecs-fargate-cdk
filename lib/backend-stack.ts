@@ -1,6 +1,7 @@
 import cdk = require('@aws-cdk/core');
 import ec2 = require('@aws-cdk/aws-ec2');
 import ecs = require('@aws-cdk/aws-ecs');
+import ssm = require('@aws-cdk/aws-ssm');
 import s3 = require('@aws-cdk/aws-s3');
 import kms = require('@aws-cdk/aws-kms');
 import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
@@ -8,15 +9,8 @@ import route53 = require('@aws-cdk/aws-route53');
 import targets = require('@aws-cdk/aws-route53-targets/lib');
 import { Mysql } from './mysql';
 import { EcsFargateTaskDefinition, EcsFargateTaskDefinitionProps } from './ecs-fargate-task-definition';
-import { EcsFargateServiceCd, EcsFargateServiceCdProps } from './ecs-fargate-service-cd';
+import { EcsFargateServiceCd, EcsFargateServiceCdProps, EcsFargateServiceCdGit } from './ecs-fargate-service-cd';
 import { S3Code } from '@aws-cdk/aws-lambda';
-
-export type GitRepository = {
-  owner: string;
-  repo: string;
-  branch: string;
-  oauthToken: cdk.SecretValue;
-}
 
 type BackendProps = cdk.StackProps & {
   vpc: {
@@ -51,7 +45,12 @@ type BackendProps = cdk.StackProps & {
     }
   ],
   cd: {
-    git: GitRepository;
+    git: {
+      owner: ssm.StringParameterAttributes;
+      repo: ssm.StringParameterAttributes;
+      branch: ssm.StringParameterAttributes;
+      oauthToken: ssm.SecureStringParameterAttributes;
+    };
   }
 }
 
@@ -98,6 +97,8 @@ export class BackendStack extends cdk.Stack {
     });
 
     props.services.forEach(service => {
+      console.log('----------')
+      console.log(service.ecsServiceProps.name)
       // ALB
       const alb = new elbv2.ApplicationLoadBalancer(this, `${service.ecsServiceProps.name}-Alb`, {
         vpc,
@@ -112,15 +113,26 @@ export class BackendStack extends cdk.Stack {
 
       // ECS Fargate TaskDefinition
       const ecsFargateTaskDefinitionConstruct = new EcsFargateTaskDefinition(this, `${service.ecsServiceProps.name}-EcsFargateTaskDefinition`, Object.assign(service.taskDefinitionProps, {
-        containers: service.taskDefinitionProps.containers.map(container => Object.assign(container, {
-          environment: Object.assign(container.environment, {
-            // DB_HOST: rdsConstruct.databaseInstance.instanceEndpoint.hostname,
-            // DB_PORT: String(rdsConstruct.databaseInstance.instanceEndpoint.port),
-            // DB_SOCKET: rdsConstruct.databaseInstance.instanceEndpoint.socketAddress,
-            DB_DATABASE: props.rds.databaseName,
-            DB_USERNAME: props.rds.masterUsername
+        containers: service.taskDefinitionProps.containers.map(container => {
+          let environment: {[x: string]: any} = {};
+          for (let [key, value] of Object.entries(container.environment.value)) {
+            environment[key] = value
+          }
+          for (let [key, parameter] of Object.entries(container.environment.ssmParameter)) {
+            environment[key] = ssm.StringParameter.valueForStringParameter(this, parameter.parameterName, parameter.version)
+          }
+
+          let secrets: {[x: string]: any} = {};
+          for (let [key, parameter] of Object.entries(container.secrets.ssmParameter)) {
+            secrets[key] = ssm.StringParameter.valueForSecureStringParameter(this, parameter.parameterName, parameter.version)
+          }
+          console.log(secrets)
+
+          Object.assign(container, {
+            environment,
+            secrets
           })
-        }))
+        })
       }));
 
       // ECS Fargate Service
@@ -182,7 +194,12 @@ export class BackendStack extends cdk.Stack {
 
       // ECS Service CD Pipeline
       new EcsFargateServiceCd(this, `${service.ecsServiceProps.name}-FargateServiceCd`, {
-        git: props.cd.git,
+        git: {
+          owner: ssm.StringParameter.valueForStringParameter(this, props.cd.git.owner.parameterName, props.cd.git.owner.version),
+          repo: ssm.StringParameter.valueForStringParameter(this, props.cd.git.repo.parameterName, props.cd.git.repo.version),
+          branch: ssm.StringParameter.valueForStringParameter(this, props.cd.git.branch.parameterName, props.cd.git.branch.version),
+          oauthToken: cdk.SecretValue.ssmSecure(props.cd.git.oauthToken.parameterName, props.cd.git.oauthToken.version.toString())
+        },
         service: ecsFargateService,
         serviceName: service.ecsServiceProps.name
       });

@@ -5,6 +5,7 @@ import ssm = require('@aws-cdk/aws-ssm');
 import logs = require('@aws-cdk/aws-logs');
 import iam = require('@aws-cdk/aws-iam');
 import { ManagedPolicy } from '@aws-cdk/aws-iam';
+import { SecretManagerProps } from './secrets-manager';
 
 export type TaskDefinitionProps = {
   family: string;
@@ -75,7 +76,7 @@ export class EcsFargateTaskDefinitionWrap extends cdk.Construct {
         secrets:  secrets.get(),
         logging: new ecs.AwsLogDriver({
           logGroup: new logs.LogGroup(scope, `${containerDefinitionProps.name}-LogGroup`, {
-            logGroupName: `${appName}-${fargateTaskDefinitionProps.family}-${containerDefinitionProps.name}-${env}`,
+            logGroupName: `${appName}-${props.taskDefinitionProps.family}-${containerDefinitionProps.name}-${env}`,
             retention: logs.RetentionDays.TWO_WEEKS
           }),
           streamPrefix: containerDefinitionProps.name

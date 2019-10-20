@@ -5,6 +5,7 @@ import ecs = require('@aws-cdk/aws-ecs');
 import codebuild = require('@aws-cdk/aws-codebuild');
 import changeCase = require('change-case');
 import { SsmParameter } from './ssm-parameter';
+import { SecretManager } from './secrets-manager';
 import { BackendStack } from '../../lib/backend-stack';
 import { ApplicationCiEcrStack } from '../../lib/application-ci-ecr-stack';
 
@@ -17,6 +18,7 @@ const app = new cdk.App({
 const appName = app.node.tryGetContext('appName');
 const env = app.node.tryGetContext('env');
 const ssmParameter = new SsmParameter(appName, env);
+const secretManager = new SecretManager(appName, env);
 
 new BackendStack(app, `${appName}-${env}`, {
   env: {
@@ -121,7 +123,7 @@ new BackendStack(app, `${appName}-${env}`, {
       owner: ssmParameter.cd.git.owner,
       repo: ssmParameter.cd.git.repo,
       branch: ssmParameter.cd.git.branch,
-      oauthToken: ssmParameter.cd.git.oAuthToken,
+      oauthToken: secretManager.cd.git.oAuthToken,
     }
   }
 });
@@ -139,7 +141,7 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
       owner: ssmParameter.app.laravel.git.owner,
       repo: ssmParameter.app.laravel.git.repo,
       branch: ssmParameter.app.laravel.git.branch,
-      oauthToken: ssmParameter.app.laravel.git.oAuthToken,
+      oauthToken: secretManager.app.laravel.git.oAuthToken,
     }
   },
   builds: [
@@ -167,12 +169,12 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
       owner: ssmParameter.cd.git.owner,
       repo: ssmParameter.cd.git.repo,
       branch: ssmParameter.cd.git.branch,
-      oauthToken: ssmParameter.cd.git.oAuthToken,
+      oauthToken: secretManager.cd.git.oAuthToken,
       config: {
         name: ssmParameter.cd.git.config.name,
         email: ssmParameter.cd.git.config.email,
       },
-      sshKey: ssmParameter.cd.git.sshKey,
+      sshKey: secretManager.cd.git.sshKey,
     },
     environment: {
       buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,

@@ -64,7 +64,7 @@ export class EcsFargateServiceCd extends cdk.Construct {
             new codepipeline_actions.EcsDeployAction({
               actionName: 'DeployAction',
               service: props.service,
-              imageFile: new codepipeline.ArtifactPath(sourceArtifact, `${props.serviceName}/imagedefinitions.json`)
+              imageFile: new codepipeline.ArtifactPath(sourceArtifact, `ecs/${props.serviceName}/imagedefinitions.json`)
             }),
           ],
         },

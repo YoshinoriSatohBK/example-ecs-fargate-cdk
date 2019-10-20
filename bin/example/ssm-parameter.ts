@@ -10,12 +10,10 @@ export class SsmParameter {
       owner: StringParameterAttributes;
       repo: StringParameterAttributes;
       branch: StringParameterAttributes;
-      oAuthToken: SecureStringParameterAttributes;
       config: {
         name: StringParameterAttributes;
         email: StringParameterAttributes;
       }
-      sshKey: SecureStringParameterAttributes;
     };
   }
   readonly app: {
@@ -24,13 +22,12 @@ export class SsmParameter {
         owner: StringParameterAttributes;
         repo: StringParameterAttributes;
         branch: StringParameterAttributes;
-        oAuthToken: SecureStringParameterAttributes;
       };
       environment: {
         appDebug: StringParameterAttributes;
         appName: StringParameterAttributes;
         appUrl: StringParameterAttributes;
-      }
+      },
       secrets: {
         appKey: SecureStringParameterAttributes;
       }
@@ -55,10 +52,6 @@ export class SsmParameter {
           parameterName: `${parameterKeyCd}/Git/Branch`,
           version: 1
         },
-        oAuthToken: {
-          parameterName: `${parameterKeyCd}/Git/OAuthToken`,
-          version: 1
-        },
         config: {
           name: {
             parameterName: `${parameterKeyCd}/Git/Config/Name`,
@@ -68,11 +61,7 @@ export class SsmParameter {
             parameterName: `${parameterKeyCd}/Git/Config/Email`,
             version: 1
           }
-        },
-        sshKey: {
-          parameterName: `${parameterKeyCd}/Git/SshKey`,
-          version: 1
-        },
+        }
       }
     }
 
@@ -91,11 +80,7 @@ export class SsmParameter {
           branch: {
             parameterName: `${parameterKeyAppLaravel}/Git/Branch`,
             version: 1
-          },
-          oAuthToken: {
-            parameterName: `${parameterKeyAppLaravel}/Git/OAuthToken`,
-            version: 1
-          },
+          }
         },
         environment: {
           appDebug: {
@@ -120,19 +105,4 @@ export class SsmParameter {
       }
     }
   }
-
-  // ssmValueForStringParameter(parameterName: string, version: number) {
-  //   return ssm.StringParameter.valueForStringParameter(this, parameterName, version)
-  // }
-
-  // secretValueSsm(parameterName: string, version: number) {
-  //   return cdk.SecretValue.ssmSecure(parameterName, version.toString());
-  // }
-
-  // ecsSecretSsm(parameterName: string, version: number) {
-  //   return ecs.Secret.fromSsmParameter(ssm.StringParameter.fromSecureStringParameterAttributes(this, parameterName, {
-  //     parameterName,
-  //     version
-  //   }));
-  // }
 }

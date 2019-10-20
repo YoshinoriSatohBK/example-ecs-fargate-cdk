@@ -15,7 +15,7 @@ import {
   ContainerDefinitionProps
 } from './ecs-fargate-task-definition-wrap';
 import { EcsFargateServiceCd, EcsFargateServiceCdProps, EcsFargateServiceCdGit } from './ecs-fargate-service-cd';
-import { S3Code } from '@aws-cdk/aws-lambda';
+import { SecretManagerProps } from './secrets-manager';
 
 type BackendProps = cdk.StackProps & {
   vpc: {
@@ -55,7 +55,7 @@ type BackendProps = cdk.StackProps & {
       owner: ssm.StringParameterAttributes;
       repo: ssm.StringParameterAttributes;
       branch: ssm.StringParameterAttributes;
-      oauthToken: ssm.SecureStringParameterAttributes;
+      oauthToken: SecretManagerProps;
     };
   }
 }
@@ -184,7 +184,7 @@ export class BackendStack extends cdk.Stack {
           owner: ssm.StringParameter.valueForStringParameter(this, props.cd.git.owner.parameterName, props.cd.git.owner.version),
           repo: ssm.StringParameter.valueForStringParameter(this, props.cd.git.repo.parameterName, props.cd.git.repo.version),
           branch: ssm.StringParameter.valueForStringParameter(this, props.cd.git.branch.parameterName, props.cd.git.branch.version),
-          oauthToken: cdk.SecretValue.ssmSecure(props.cd.git.oauthToken.parameterName, props.cd.git.oauthToken.version.toString())
+          oauthToken: cdk.SecretValue.secretsManager(props.cd.git.oauthToken.secretId, props.cd.git.oauthToken.options),
         },
         service: ecsFargateService,
         serviceName: service.ecsServiceProps.name

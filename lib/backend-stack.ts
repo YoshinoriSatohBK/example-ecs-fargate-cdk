@@ -8,7 +8,12 @@ import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
 import route53 = require('@aws-cdk/aws-route53');
 import targets = require('@aws-cdk/aws-route53-targets/lib');
 import { Mysql } from './mysql';
-import { EcsFargateTaskDefinition, EcsFargateTaskDefinitionProps } from './ecs-fargate-task-definition';
+import {
+  EcsFargateTaskDefinitionWrap,
+  EcsFargateTaskDefinitionWrapProps,
+  TaskDefinitionProps,
+  ContainerDefinitionProps
+} from './ecs-fargate-task-definition-wrap';
 import { EcsFargateServiceCd, EcsFargateServiceCdProps, EcsFargateServiceCdGit } from './ecs-fargate-service-cd';
 import { S3Code } from '@aws-cdk/aws-lambda';
 
@@ -41,7 +46,8 @@ type BackendProps = cdk.StackProps & {
         maxHealthyPercent: number;
         healthCheckGracePeriod: cdk.Duration;
       };
-      taskDefinitionProps: EcsFargateTaskDefinitionProps;
+      taskDefinitionProps: TaskDefinitionProps;
+      containerDefinitionPropsArray: Array<ContainerDefinitionProps>;
     }
   ],
   cd: {
@@ -97,8 +103,6 @@ export class BackendStack extends cdk.Stack {
     });
 
     props.services.forEach(service => {
-      console.log('----------')
-      console.log(service.ecsServiceProps.name)
       // ALB
       const alb = new elbv2.ApplicationLoadBalancer(this, `${service.ecsServiceProps.name}-Alb`, {
         vpc,
@@ -112,28 +116,10 @@ export class BackendStack extends cdk.Stack {
       });
 
       // ECS Fargate TaskDefinition
-      const ecsFargateTaskDefinitionConstruct = new EcsFargateTaskDefinition(this, `${service.ecsServiceProps.name}-EcsFargateTaskDefinition`, Object.assign(service.taskDefinitionProps, {
-        containers: service.taskDefinitionProps.containers.map(container => {
-          let environment: {[x: string]: any} = {};
-          for (let [key, value] of Object.entries(container.environment.value)) {
-            environment[key] = value
-          }
-          for (let [key, parameter] of Object.entries(container.environment.ssmParameter)) {
-            environment[key] = ssm.StringParameter.valueForStringParameter(this, parameter.parameterName, parameter.version)
-          }
-
-          let secrets: {[x: string]: any} = {};
-          for (let [key, parameter] of Object.entries(container.secrets.ssmParameter)) {
-            secrets[key] = ssm.StringParameter.valueForSecureStringParameter(this, parameter.parameterName, parameter.version)
-          }
-          console.log(secrets)
-
-          Object.assign(container, {
-            environment,
-            secrets
-          })
-        })
-      }));
+      const ecsFargateTaskDefinitionConstruct = new EcsFargateTaskDefinitionWrap(this, `${service.ecsServiceProps.name}-EcsFargateTaskDefinition`, {
+        taskDefinitionProps: service.taskDefinitionProps,
+        containerDefinitionPropsArray: service.containerDefinitionPropsArray,
+      });
 
       // ECS Fargate Service
       const ecsFargateService = new ecs.FargateService(this, `${service.ecsServiceProps.name}-EcsFargateService`, {

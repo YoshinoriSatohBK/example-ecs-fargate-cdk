@@ -57,63 +57,63 @@ new BackendStack(app, `${appName}-${env}`, {
         family: 'laravel-app',
         cpu: 256,
         memoryLimitMiB: 512,
-        containers: [
-          {
-            name: 'laravel',
-            ecr: {
-              repositoryName: 'laravel-app',
-              imageTag: '825fcec'
+      },
+      containerDefinitionPropsArray: [
+        {
+          name: 'laravel',
+          ecr: {
+            repositoryName: 'laravel-app',
+            imageTag: '825fcec'
+          },
+          portMappings: [
+            {
+              containerPort: 9000,
+              hostPort: 9000,
+              protocol: ecs.Protocol.TCP
+            }
+          ],
+          environmentSource: {
+            value: {
+              APP_ENV: env,
             },
-            portMappings: [
-              {
-                containerPort: 9000,
-                hostPort: 9000,
-                protocol: ecs.Protocol.TCP
-              }
-            ],
-            environment: {
-              value: {
-                APP_ENV: env,
-              },
-              ssmParameter: {
-                APP_DEBUG: ssmParameter.app.laravel.environment.appDebug,
-                APP_NAME: ssmParameter.app.laravel.environment.appName,
-                APP_URL: ssmParameter.app.laravel.environment.appUrl
-              }
-            },
-            secrets: {
-              ssmParameter: {
-                APP_KEY: ssmParameter.app.laravel.secrets.appKey
-              }
+            ssmParameter: {
+              APP_DEBUG: ssmParameter.app.laravel.environment.appDebug,
+              APP_NAME: ssmParameter.app.laravel.environment.appName,
+              APP_URL: ssmParameter.app.laravel.environment.appUrl
             }
           },
-          {
-            name: 'nginx',
-            workingDirectory: '/var/www/html',
-            ecr: {
-              repositoryName: 'laravel-app-nginx',
-              imageTag: '825fcec'
-            },
-            portMappings: [
-              {
-                containerPort: 80,
-                hostPort: 80,
-                protocol: ecs.Protocol.TCP
-              }
-            ],
-            environment: {
-              value: {
-              },
-              ssmParameter: {
-              }
-            },
-            secrets: {
-              ssmParameter: {
-              }
+          secretsSource: {
+            ssmParameter: {
+              APP_KEY: ssmParameter.app.laravel.secrets.appKey
             }
           }
-        ]
-      }
+        },
+        {
+          name: 'nginx',
+          workingDirectory: '/var/www/html',
+          ecr: {
+            repositoryName: 'laravel-app-nginx',
+            imageTag: '825fcec'
+          },
+          portMappings: [
+            {
+              containerPort: 80,
+              hostPort: 80,
+              protocol: ecs.Protocol.TCP
+            }
+          ],
+          environmentSource: {
+            value: {
+            },
+            ssmParameter: {
+            }
+          },
+          secretsSource: {
+            ssmParameter: {
+            }
+          }
+        }
+      ]
     }
   ],
   cd: {

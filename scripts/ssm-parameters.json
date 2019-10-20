@@ -1,0 +1,72 @@
+[
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/Cd/Git/Owner",
+    "Value": "YoshinoriSatoh"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/Cd/Git/Repo",
+    "Value": "example-ecs-fargate-cd"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/Cd/Git/Branch",
+    "Value": "develop"
+  },
+  {
+    "Type": "SecureString",
+    "Name": "/Example/Dev/Cd/Git/OAuthToken",
+    "Value": "4e0884aebca75df8eb8b9a1afd70b590ff22a918"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/Cd/Git/Config/Name",
+    "Value": "yoshinori"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/Cd/Git/Config/Email",
+    "Value": "yoshinori.satoh.tokyo@gmail.com"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/App/Laravel/Git/Owner",
+    "Value": "YoshinoriSatoh"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/App/Laravel/Git/Repo",
+    "Value": "laravel-app"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/App/Laravel/Git/Branch",
+    "Value": "develop"
+  },
+  {
+    "Type": "SecureString",
+    "Name": "/Example/Dev/App/Laravel/Git/OAuthToken",
+    "Value": "4e0884aebca75df8eb8b9a1afd70b590ff22a918"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/App/Laravel/Env/AppDebug",
+    "Value": "true"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/App/Laravel/Env/AppName",
+    "Value": "Laravel"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/Dev/App/Laravel/Env/AppUrl",
+    "Value": "https://app-dev/yoshinori-satoh.com"
+  },
+  {
+    "Type": "SecureString",
+    "Name": "/Example/Dev/App/Laravel/Sec/AppKey",
+    "Value": "base64:1B+4kHLo7Qwn+mSDD/f/Q1RsCwXztUikdb5j8gJ3hkw="
+  }
+]

@@ -5,6 +5,19 @@ import { StringParameterAttributes, SecureStringParameterAttributes } from '@aws
 import changeCase = require('change-case');
 
 export class SsmParameter {
+  readonly cd: {
+    git: {
+      owner: StringParameterAttributes;
+      repo: StringParameterAttributes;
+      branch: StringParameterAttributes;
+      oAuthToken: SecureStringParameterAttributes;
+      config: {
+        name: StringParameterAttributes;
+        email: StringParameterAttributes;
+      }
+      sshKey: SecureStringParameterAttributes;
+    };
+  }
   readonly app: {
     laravel: {
       git: {
@@ -22,19 +35,6 @@ export class SsmParameter {
         appKey: SecureStringParameterAttributes;
       }
     }
-  }
-  readonly cd: {
-    git: {
-      owner: StringParameterAttributes;
-      repo: StringParameterAttributes;
-      branch: StringParameterAttributes;
-      oAuthToken: SecureStringParameterAttributes;
-      config: {
-        name: StringParameterAttributes;
-        email: StringParameterAttributes;
-      }
-      sshKey: SecureStringParameterAttributes;
-    };
   }
 
   constructor(appName: string, env: string) {

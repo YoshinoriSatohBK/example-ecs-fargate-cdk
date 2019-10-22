@@ -1,3 +1,5 @@
+import 'source-map-support/register';
+
 import cdk = require('@aws-cdk/core');
 import ecs = require('@aws-cdk/aws-ecs');
 import s3 = require('@aws-cdk/aws-s3');
@@ -7,21 +9,19 @@ import codepipeline_actions = require('@aws-cdk/aws-codepipeline-actions');
 import iam = require('@aws-cdk/aws-iam');
 import { GitHubSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 
-export type EcsFargateServiceCdGit = {
-  owner: string;
-  repo: string;
-  branch: string;
-  oauthToken: cdk.SecretValue;
-}
-
-export type EcsFargateServiceCdProps = {
-  git: EcsFargateServiceCdGit;
+export type EcsServiceCdProps = {
+  git: {
+    owner: string;
+    repo: string;
+    branch: string;
+    oauthToken: cdk.SecretValue;
+  };
   service: ecs.FargateService;
   serviceName: string;
 }
 
-export class EcsFargateServiceCd extends cdk.Construct {
-  constructor(scope: cdk.Construct, name: string, props: EcsFargateServiceCdProps) {
+export class EcsServiceCd extends cdk.Construct {
+  constructor(scope: cdk.Construct, name: string, props: EcsServiceCdProps) {
     super(scope, name);
 
     const appName = scope.node.tryGetContext('appName');

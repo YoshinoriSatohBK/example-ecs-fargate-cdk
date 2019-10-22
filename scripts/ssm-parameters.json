@@ -51,6 +51,11 @@
   },
   {
     "Type": "String",
+    "Name": "/Example/Dev/App/Laravel/Env/AppEnv",
+    "Value": "dev"
+  },
+  {
+    "Type": "String",
     "Name": "/Example/Dev/App/Laravel/Env/AppDebug",
     "Value": "true"
   },

@@ -5,7 +5,8 @@ import ssm = require('@aws-cdk/aws-ssm');
 import logs = require('@aws-cdk/aws-logs');
 import iam = require('@aws-cdk/aws-iam');
 import { ManagedPolicy } from '@aws-cdk/aws-iam';
-import { SecretManagerProps } from './secrets-manager';
+import { SecretManagerUtil, SecretManagerAttributes } from '../utils/secrets-manager';
+import { SsmParameterUtil } from '../utils/ssm-parameter';
 
 export type TaskDefinitionProps = {
   family: string;
@@ -19,11 +20,11 @@ export type ContainerDefinitionProps = {
   memoryLimitMiB?: number;
   memoryReservationMiB?: number;
   workingDirectory?: string;
-  environmentSource: EnvironmentSource;
-  secretsSource: {
-    ssmParameter: {
-      [key: string]: ssm.SecureStringParameterAttributes;
-    }
+  environment?: {
+    [key: string]: ssm.StringParameterAttributes;
+  };
+  secrets?: {
+    [key: string]: ssm.SecureStringParameterAttributes;
   };
   ecr: {
     repositoryName: string;
@@ -32,15 +33,15 @@ export type ContainerDefinitionProps = {
   portMappings: Array<ecs.PortMapping>;
 }
 
-export type EcsFargateTaskDefinitionWrapProps = {
+export type EcsFargateTaskDefinitionProps = {
   taskDefinitionProps: TaskDefinitionProps;
   containerDefinitionPropsArray: Array<ContainerDefinitionProps>;
 }
 
-export class EcsFargateTaskDefinitionWrap extends cdk.Construct {
+export class EcsFargateTaskDefinition extends cdk.Construct {
   readonly taskDefinition: ecs.FargateTaskDefinition;
 
-  constructor(scope: cdk.Construct, name: string, props: EcsFargateTaskDefinitionWrapProps) {
+  constructor(scope: cdk.Construct, name: string, props: EcsFargateTaskDefinitionProps) {
     super(scope, name);
 
     const appName = scope.node.tryGetContext('appName');
@@ -68,12 +69,22 @@ export class EcsFargateTaskDefinitionWrap extends cdk.Construct {
     props.containerDefinitionPropsArray.forEach(containerDefinitionProps => {
       const ecrRepository = ecr.Repository.fromRepositoryName(scope, `${containerDefinitionProps.name}-EcrRepository`, containerDefinitionProps.ecr.repositoryName);
 
-      const environment = new Environment(scope, containerDefinitionProps.environmentSource);
-      const secrets = new Secret(scope, containerDefinitionProps.secretsSource);
+      let environment: {[key: string]: string} = {};
+      if (containerDefinitionProps.environment) {
+        for (let [key, parameter] of Object.entries(containerDefinitionProps.environment)) {
+          environment[key] = SsmParameterUtil.value(scope, parameter);
+        }
+      }
+      let secrets: {[key: string]: ecs.Secret} = {};
+      if (containerDefinitionProps.secrets) {
+        for (let [key, parameter] of Object.entries(containerDefinitionProps.secrets)) {
+          secrets[key] = SsmParameterUtil.ecsSecret(scope, parameter);
+        }
+      }
       const containerDefinitionOptions = Object.assign({}, containerDefinitionProps, {
         image: ecs.ContainerImage.fromEcrRepository(ecrRepository, containerDefinitionProps.ecr.imageTag),
-        environment: environment.get(),
-        secrets:  secrets.get(),
+        environment,
+        secrets,
         logging: new ecs.AwsLogDriver({
           logGroup: new logs.LogGroup(scope, `${containerDefinitionProps.name}-LogGroup`, {
             logGroupName: `${appName}-${props.taskDefinitionProps.family}-${containerDefinitionProps.name}-${env}`,
@@ -85,47 +96,5 @@ export class EcsFargateTaskDefinitionWrap extends cdk.Construct {
       const containerDefinition = this.taskDefinition.addContainer(containerDefinitionProps.name, containerDefinitionOptions);
       containerDefinitionProps.portMappings.forEach(mapping => containerDefinition.addPortMappings(mapping));
     });
-  }
-}
-
-type EnvironmentSource = {
-  value: {
-    [key: string]: string;
-  }
-  ssmParameter: {
-    [key: string]: ssm.StringParameterAttributes;
-  }
-}
-class Environment {
-  private environment: {[key: string]: string} = {};
-
-  constructor(scope: cdk.Construct, sourece: EnvironmentSource) {
-    for (let [key, value] of Object.entries(sourece.value)) {
-      this.environment[key] = value;
-    }
-    for (let [key, parameter] of Object.entries(sourece.ssmParameter)) {
-      this.environment[key] = ssm.StringParameter.valueForStringParameter(scope, parameter.parameterName, parameter.version)
-    }
-  }
-  get() {
-    return this.environment;
-  }
-}
-
-type SecretsSource = {
-  ssmParameter: {
-    [key: string]: ssm.SecureStringParameterAttributes;
-  }
-}
-class Secret {
-  private secret: {[key: string]: ecs.Secret} = {};
-
-  constructor(scope: cdk.Construct, sourece: SecretsSource) {
-    for (let [key, parameter] of Object.entries(sourece.ssmParameter)) {
-      this.secret[key] = ecs.Secret.fromSsmParameter(ssm.StringParameter.fromSecureStringParameterAttributes(scope, parameter.parameterName, parameter))
-    }
-  }
-  get() {
-    return this.secret;
   }
 }

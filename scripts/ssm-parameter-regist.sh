@@ -1,6 +1,7 @@
 #!/bin/sh
 
-parameters=$(cat ./ssm-parameters.json)
+script_dir=$(cd $(dirname $0);pwd)
+parameters=$(cat $script_dir/ssm-parameters.json)
 len=$(echo $parameters | jq length)
 for i in $( seq 0 $(($len - 1)) ); do
   parameter=$(echo $parameters | jq .[$i])

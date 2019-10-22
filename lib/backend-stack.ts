@@ -9,13 +9,15 @@ import route53 = require('@aws-cdk/aws-route53');
 import targets = require('@aws-cdk/aws-route53-targets/lib');
 import { Mysql } from './mysql';
 import {
-  EcsFargateTaskDefinitionWrap,
-  EcsFargateTaskDefinitionWrapProps,
+  EcsFargateTaskDefinition,
+  EcsFargateTaskDefinitionProps,
   TaskDefinitionProps,
   ContainerDefinitionProps
-} from './ecs-fargate-task-definition-wrap';
-import { EcsFargateServiceCd, EcsFargateServiceCdProps, EcsFargateServiceCdGit } from './ecs-fargate-service-cd';
-import { SecretManagerProps } from './secrets-manager';
+} from './ecs-fargate-task-definition';
+
+import { EcsServiceCd, EcsServiceCdProps } from './ecs-service-cd';
+import { SecretManagerUtil, SecretManagerAttributes } from '../utils/secrets-manager';
+import { SsmParameterUtil } from '../utils/ssm-parameter';
 
 type BackendProps = cdk.StackProps & {
   vpc: {
@@ -55,7 +57,7 @@ type BackendProps = cdk.StackProps & {
       owner: ssm.StringParameterAttributes;
       repo: ssm.StringParameterAttributes;
       branch: ssm.StringParameterAttributes;
-      oauthToken: SecretManagerProps;
+      oauthToken: SecretManagerAttributes;
     };
   }
 }
@@ -66,7 +68,6 @@ export class BackendStack extends cdk.Stack {
 
     const appName = this.node.tryGetContext('appName');
     const env = this.node.tryGetContext('env');
-
     const vpc = new ec2.Vpc(this, `Vpc`, {
       cidr: props.vpc.cidr,
       maxAzs: 2,
@@ -116,7 +117,7 @@ export class BackendStack extends cdk.Stack {
       });
 
       // ECS Fargate TaskDefinition
-      const ecsFargateTaskDefinitionConstruct = new EcsFargateTaskDefinitionWrap(this, `${service.ecsServiceProps.name}-EcsFargateTaskDefinition`, {
+      const ecsFargateTaskDefinitionConstruct = new EcsFargateTaskDefinition(this, `${service.ecsServiceProps.name}-EcsFargateTaskDefinition`, {
         taskDefinitionProps: service.taskDefinitionProps,
         containerDefinitionPropsArray: service.containerDefinitionPropsArray,
       });
@@ -179,12 +180,12 @@ export class BackendStack extends cdk.Stack {
       });
 
       // ECS Service CD Pipeline
-      new EcsFargateServiceCd(this, `${service.ecsServiceProps.name}-FargateServiceCd`, {
+      new EcsServiceCd(this, `${service.ecsServiceProps.name}-EcsServiceCd`, {
         git: {
-          owner: ssm.StringParameter.valueForStringParameter(this, props.cd.git.owner.parameterName, props.cd.git.owner.version),
-          repo: ssm.StringParameter.valueForStringParameter(this, props.cd.git.repo.parameterName, props.cd.git.repo.version),
-          branch: ssm.StringParameter.valueForStringParameter(this, props.cd.git.branch.parameterName, props.cd.git.branch.version),
-          oauthToken: cdk.SecretValue.secretsManager(props.cd.git.oauthToken.secretId, props.cd.git.oauthToken.options),
+          owner: SsmParameterUtil.value(this, props.cd.git.owner),
+          repo: SsmParameterUtil.value(this, props.cd.git.repo),
+          branch: SsmParameterUtil.value(this, props.cd.git.branch),
+          oauthToken: SecretManagerUtil.secureValue(this, props.cd.git.oauthToken),
         },
         service: ecsFargateService,
         serviceName: service.ecsServiceProps.name

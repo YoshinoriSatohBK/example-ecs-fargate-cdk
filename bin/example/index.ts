@@ -3,9 +3,8 @@ import 'source-map-support/register';
 import cdk = require('@aws-cdk/core');
 import ecs = require('@aws-cdk/aws-ecs');
 import codebuild = require('@aws-cdk/aws-codebuild');
+import ssm = require('@aws-cdk/aws-ssm');
 import changeCase = require('change-case');
-import { SsmParameter } from './ssm-parameter';
-import { SecretManager } from './secrets-manager';
 import { BackendStack } from '../../lib/backend-stack';
 import { ApplicationCiEcrStack } from '../../lib/application-ci-ecr-stack';
 
@@ -15,12 +14,13 @@ const app = new cdk.App({
   }
 });
 
+const parameters = require('./parameters.json');
+const secrets = require('./secrets.json');
+
 const appName = app.node.tryGetContext('appName');
 const env = app.node.tryGetContext('env');
-const ssmParameter = new SsmParameter(appName, env);
-const secretManager = new SecretManager(appName, env);
 
-new BackendStack(app, `${appName}-${env}`, {
+const backend = new BackendStack(app, `${appName}-${env}`, {
   env: {
     account: app.node.tryGetContext('account'),
     region: app.node.tryGetContext('region')
@@ -62,35 +62,6 @@ new BackendStack(app, `${appName}-${env}`, {
       },
       containerDefinitionPropsArray: [
         {
-          name: 'laravel',
-          ecr: {
-            repositoryName: 'laravel-app',
-            imageTag: '825fcec'
-          },
-          portMappings: [
-            {
-              containerPort: 9000,
-              hostPort: 9000,
-              protocol: ecs.Protocol.TCP
-            }
-          ],
-          environmentSource: {
-            value: {
-              APP_ENV: env,
-            },
-            ssmParameter: {
-              APP_DEBUG: ssmParameter.app.laravel.environment.appDebug,
-              APP_NAME: ssmParameter.app.laravel.environment.appName,
-              APP_URL: ssmParameter.app.laravel.environment.appUrl
-            }
-          },
-          secretsSource: {
-            ssmParameter: {
-              APP_KEY: ssmParameter.app.laravel.secrets.appKey
-            }
-          }
-        },
-        {
           name: 'nginx',
           workingDirectory: '/var/www/html',
           ecr: {
@@ -104,30 +75,42 @@ new BackendStack(app, `${appName}-${env}`, {
               protocol: ecs.Protocol.TCP
             }
           ],
-          environmentSource: {
-            value: {
-            },
-            ssmParameter: {
-            }
+        },
+        {
+          name: 'laravel',
+          ecr: {
+            repositoryName: 'laravel-app',
+            imageTag: '825fcec'
           },
-          secretsSource: {
-            ssmParameter: {
+          portMappings: [
+            {
+              containerPort: 9000,
+              hostPort: 9000,
+              protocol: ecs.Protocol.TCP
             }
-          }
+          ],
+          environment: {
+            APP_ENV: parameters.app.laravel.env.appEnv,
+            APP_DEBUG: parameters.app.laravel.env.appDebug,
+            APP_NAME: parameters.app.laravel.env.appName,
+            APP_URL: parameters.app.laravel.env.appUrl,
+          },
+          secrets: {
+            APP_KEY: parameters.app.laravel.sec.appKey
+          },
         }
       ]
     }
   ],
   cd: {
     git: {
-      owner: ssmParameter.cd.git.owner,
-      repo: ssmParameter.cd.git.repo,
-      branch: ssmParameter.cd.git.branch,
-      oauthToken: secretManager.cd.git.oAuthToken,
-    }
+      owner: parameters.cd.git.owner,
+      repo: parameters.cd.git.repo,
+      branch: parameters.cd.git.branch,
+      oauthToken: secrets.cd.git.oauthToken
+    },
   }
 });
-
 
 const serviceNameLaravel = 'laravel-app';
 new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
@@ -138,10 +121,10 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
   serviceName: serviceNameLaravel,
   source: {
     git: {
-      owner: ssmParameter.app.laravel.git.owner,
-      repo: ssmParameter.app.laravel.git.repo,
-      branch: ssmParameter.app.laravel.git.branch,
-      oauthToken: secretManager.app.laravel.git.oAuthToken,
+      owner: parameters.app.laravel.git.owner,
+      repo: parameters.app.laravel.git.repo,
+      branch: parameters.app.laravel.git.branch,
+      oauthToken: secrets.app.laravel.git.oauthToken,
     }
   },
   builds: [
@@ -166,15 +149,15 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
   ],
   deploy: {
     git: {
-      owner: ssmParameter.cd.git.owner,
-      repo: ssmParameter.cd.git.repo,
-      branch: ssmParameter.cd.git.branch,
-      oauthToken: secretManager.cd.git.oAuthToken,
+      owner: parameters.cd.git.owner,
+      repo: parameters.cd.git.repo,
+      branch: parameters.cd.git.branch,
+      oauthToken: secrets.cd.git.oauthToken,
       config: {
-        name: ssmParameter.cd.git.config.name,
-        email: ssmParameter.cd.git.config.email,
+        name: parameters.cd.git.config.name,
+        email: parameters.cd.git.config.email,
       },
-      sshKey: secretManager.cd.git.sshKey,
+      sshKey: secrets.cd.git.sshKey,
     },
     environment: {
       buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,

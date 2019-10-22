@@ -1,0 +1,70 @@
+{
+  "app": {
+    "laravel": {
+      "git": {
+        "owner": {
+          "parameterName": "/App/Laravel/Git/Owner",
+          "version": 1
+        },
+        "repo": {
+          "parameterName": "/App/Laravel/Git/Repo",
+          "version": 1
+        },
+        "branch": {
+          "parameterName": "/App/Laravel/Git/Branch",
+          "version": 1
+        }
+      },
+      "env": {
+        "appEnv": {
+          "parameterName": "/App/Laravel/Env/AppEnv",
+          "version": 1
+        },
+        "appDebug": {
+          "parameterName": "/App/Laravel/Env/AppDebug",
+          "version": 1
+        },
+        "appName": {
+          "parameterName": "/App/Laravel/Env/AppName",
+          "version": 1
+        },
+        "appUrl": {
+          "parameterName": "/App/Laravel/Env/AppUrl",
+          "version": 1
+        }
+      },
+      "sec": {
+        "appKey": {
+          "parameterName": "/App/Laravel/Sec/AppKey",
+          "version": 1
+        }
+      }
+    }
+  },
+  "cd": {
+    "git": {
+      "owner": {
+        "parameterName": "/Cd/Git/Owner",
+        "version": 1
+      },
+      "repo": {
+        "parameterName": "/Cd/Git/Repo",
+        "version": 1
+      },
+      "branch": {
+        "parameterName": "/Cd/Git/Branch",
+        "version": 1
+      },
+      "config": {
+        "name": {
+          "parameterName": "/Cd/Git/Config/Name",
+          "version": 1
+        },
+        "email": {
+          "parameterName": "/Cd/Git/Config/Email",
+          "version": 1
+        }
+      }
+    }
+  }
+}

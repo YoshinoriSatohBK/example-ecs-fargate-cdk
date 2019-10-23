@@ -224,6 +224,7 @@ export class ApplicationCiEcrStack extends cdk.Stack {
           commands: [
             "git clone git@github.com:${GIT_OWNER}/${GIT_REPO}.git",
             "cd ${GIT_REPO}",
+            "git checkout ${GIT_BRANCH}",
             "git checkout -b deploy/${IMAGE_TAG}",
             "cd ecs/${SERVICE_NAME}",
             "sed -i -e \"s/\\\"imageUri\\\": \\(.*\\):.*/\\\"imageUri\\\": \\1:${IMAGE_TAG}\\\"/g\" imagedefinitions.json",

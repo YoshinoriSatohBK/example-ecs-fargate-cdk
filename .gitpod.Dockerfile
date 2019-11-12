@@ -4,7 +4,7 @@ USER root
 
 USER gitpod
 RUN pip3 install awscli --upgrade --user
-RUN npm install -g aws-cdk && yarn
+RUN npm install -g aws-cdk && yarn && npm-check-updates
 
 # Install custom tools, runtime, etc. using apt-get
 # For example, the command below would install "bastet" - a command line tetris clone:

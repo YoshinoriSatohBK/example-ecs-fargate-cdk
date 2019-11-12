@@ -29,13 +29,13 @@ const backend = new BackendStack(app, `${appName}-${env}`, {
     cidr: '10.10.0.0/16'
   },
   route53: {
-    hostedZoneId: 'Z20P2QL5U31HW4',
-    domain: 'yoshinori-satoh.com',
+    hostedZoneId: 'Z3N49X3U5XDHKP',
+    domain: 'yoshinori-satoh.net',
     subDomain: 'app'
   },
   acm: {
     certificateArns: [
-      'arn:aws:acm:ap-northeast-1:539459320497:certificate/83e8a598-0701-478a-b539-06407d00bbe4'
+      'arn:aws:acm:ap-northeast-1:539459320497:certificate/42a4089e-8453-43cc-8b66-e206aad647a5'
     ]
   },
   rds: {

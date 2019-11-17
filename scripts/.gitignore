@@ -1,2 +1,2 @@
-ssm-parameters*.json
-!ssm-parameters-sample.json
+/ssm-parameters*.json
+!/ssm-parameters-sample.json

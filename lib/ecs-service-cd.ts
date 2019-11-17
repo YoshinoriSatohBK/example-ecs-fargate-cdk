@@ -9,7 +9,7 @@ import codepipeline_actions = require('@aws-cdk/aws-codepipeline-actions');
 import iam = require('@aws-cdk/aws-iam');
 import { GitHubSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 
-export type EcsServiceCdProps = {
+export interface EcsServiceCdProps {
   git: {
     owner: string;
     repo: string;

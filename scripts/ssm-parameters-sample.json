@@ -1,0 +1,77 @@
+[
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/Cd/Git/Owner",
+    "Value": "OwnerName"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/Cd/Git/Repo",
+    "Value": "GitRepositoryName"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/Cd/Git/Branch",
+    "Value": "BranchName"
+  },
+  {
+    "Type": "SecureString",
+    "Name": "/Example/$ENV/Cd/Git/OAuthToken",
+    "Value": "OAuthToken"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/Cd/Git/Config/Name",
+    "Value": "OwnerName"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/Cd/Git/Config/Email",
+    "Value": "EmailAddress"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/App/Laravel/Git/Owner",
+    "Value": "OwnerName"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/App/Laravel/Git/Repo",
+    "Value": "GitRepositoryName"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/App/Laravel/Git/Branch",
+    "Value": "BranchName"
+  },
+  {
+    "Type": "SecureString",
+    "Name": "/Example/$ENV/App/Laravel/Git/OAuthToken",
+    "Value": "OAuthToken"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/App/Laravel/Env/AppEnv",
+    "Value": "AppEnv"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/App/Laravel/Env/AppDebug",
+    "Value": "AppDebug"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/App/Laravel/Env/AppName",
+    "Value": "AppName"
+  },
+  {
+    "Type": "String",
+    "Name": "/Example/$ENV/App/Laravel/Env/AppUrl",
+    "Value": "AppUrl"
+  },
+  {
+    "Type": "SecureString",
+    "Name": "/Example/$ENV/App/Laravel/Sec/AppKey",
+    "Value": "AppKey"
+  }
+]

@@ -2,7 +2,7 @@ import 'source-map-support/register';
 import cdk = require('@aws-cdk/core');
 import changeCase = require('change-case');
 
-export type SecretManagerAttributes = {
+export interface SecretManagerAttributes {
   secretId: string;
   options?: cdk.SecretsManagerSecretOptions;
 };

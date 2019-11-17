@@ -4,8 +4,6 @@ npm run build
 
 cdk destroy '*' \
   -a "npx ts-node bin/example/index.ts" \
-  -c account=539459320497 \
-  -c region=ap-northeast-1 \
   -c env=dev
 
 aws s3 rb s3://example-laravel-app-dev-build-artifact --force

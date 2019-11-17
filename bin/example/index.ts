@@ -1,7 +1,10 @@
 import 'source-map-support/register';
 
 import cdk = require('@aws-cdk/core');
+import { Aws } from '@aws-cdk/core';
+import ec2 = require('@aws-cdk/aws-ec2');
 import ecs = require('@aws-cdk/aws-ecs');
+import rds = require('@aws-cdk/aws-rds');
 import codebuild = require('@aws-cdk/aws-codebuild');
 import ssm = require('@aws-cdk/aws-ssm');
 import changeCase = require('change-case');
@@ -13,17 +16,37 @@ const app = new cdk.App({
     appName: 'example'
   }
 });
+const appName = app.node.tryGetContext('appName');
+
+enum Env {
+  prod,
+  dev
+}
+const env:Env = app.node.tryGetContext('env') === 'prod' ? Env.prod : Env.dev;
+
+const dbClusterForEnv = env == Env.prod ? {
+  instanceType: ec2.InstanceType.of(ec2.InstanceClass.MEMORY5, ec2.InstanceSize.LARGE),
+  instances: 2
+} : {
+  instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
+  instances: 1
+}
+
+const servicesForEnv = env == Env.prod ? {
+  cpu: 512,
+  memoryLimitMiB: 1024,
+} : {
+  cpu: 256,
+  memoryLimitMiB: 512,
+}
 
 const parameters = require('./parameters.json');
 const secrets = require('./secrets.json');
 
-const appName = app.node.tryGetContext('appName');
-const env = app.node.tryGetContext('env');
-
 const backend = new BackendStack(app, `${appName}-${env}`, {
   env: {
-    account: app.node.tryGetContext('account'),
-    region: app.node.tryGetContext('region')
+    account: Aws.ACCOUNT_ID,
+    region: Aws.REGION
   },
   vpc: {
     cidr: '10.10.0.0/16'
@@ -34,31 +57,41 @@ const backend = new BackendStack(app, `${appName}-${env}`, {
     subDomain: 'app'
   },
   acm: {
-    certificateArns: [
-      'arn:aws:acm:ap-northeast-1:539459320497:certificate/42a4089e-8453-43cc-8b66-e206aad647a5'
-    ]
+    certificateArn: `arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/42a4089e-8453-43cc-8b66-e206aad647a5`
   },
-  rds: {
-    databaseName: 'appDatabase',
-    masterUsername: 'syscdk'
+// dbInstance: {
+  //   databaseName: string;
+  //   masterUsername: string;
+  // },
+  dbCluster: {
+    engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
+    engineVersion: '5.7.12',
+    instanceProps: {
+      instanceType: dbClusterForEnv.instanceType,
+      parameterGroup: {
+        family: 'aurora-mysql5.7'
+      }
+    },
+    instances: dbClusterForEnv.instances,
+    parameterGroup: {
+      family: 'aurora-mysql5.7'
+    }
   },
   services: [
     {
+      name: 'laravel-app',
       targetPort: 80,
       listenerPort: 443,
-      ecsServiceProps: {
-        name: 'laravel-app',
-        desiredCount: 1,
-        assignPublicIp: true,
-        enableECSManagedTags: true,
-        minHealthyPercent: 100,
-        maxHealthyPercent: 200,
-        healthCheckGracePeriod: cdk.Duration.seconds(60)
-      },
+      desiredCount: 1,
+      assignPublicIp: true,
+      enableECSManagedTags: true,
+      minHealthyPercent: 100,
+      maxHealthyPercent: 200,
+      healthCheckGracePeriod: cdk.Duration.seconds(60),
+      cpu: servicesForEnv.cpu,
+      memoryLimitMiB: servicesForEnv.memoryLimitMiB,
       taskDefinitionProps: {
         family: 'laravel-app',
-        cpu: 256,
-        memoryLimitMiB: 512,
       },
       containerDefinitionPropsArray: [
         {
@@ -90,13 +123,17 @@ const backend = new BackendStack(app, `${appName}-${env}`, {
             }
           ],
           environment: {
-            APP_ENV: parameters.app.laravel.env.appEnv,
-            APP_DEBUG: parameters.app.laravel.env.appDebug,
-            APP_NAME: parameters.app.laravel.env.appName,
-            APP_URL: parameters.app.laravel.env.appUrl,
+            ssmStringParameterAttributes: {
+              APP_ENV: parameters.app.laravel.env.appEnv,
+              APP_DEBUG: parameters.app.laravel.env.appDebug,
+              APP_NAME: parameters.app.laravel.env.appName,
+              APP_URL: parameters.app.laravel.env.appUrl,
+            }
           },
           secrets: {
-            APP_KEY: parameters.app.laravel.sec.appKey
+            ssmSecureStringParameterAttributes: {
+              APP_KEY: parameters.app.laravel.sec.appKey
+            }
           },
         }
       ]
@@ -115,8 +152,8 @@ const backend = new BackendStack(app, `${appName}-${env}`, {
 const serviceNameLaravel = 'laravel-app';
 new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
   env: {
-    account: app.node.tryGetContext('account'),
-    region: app.node.tryGetContext('region')
+    account: Aws.ACCOUNT_ID,
+    region: Aws.REGION
   },
   serviceName: serviceNameLaravel,
   source: {

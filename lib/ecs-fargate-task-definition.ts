@@ -8,23 +8,30 @@ import { ManagedPolicy } from '@aws-cdk/aws-iam';
 import { SecretManagerUtil, SecretManagerAttributes } from '../utils/secrets-manager';
 import { SsmParameterUtil } from '../utils/ssm-parameter';
 
-export type TaskDefinitionProps = {
+export interface TaskDefinitionProps {
   family: string;
   cpu?: number;
   memoryLimitMiB?: number;
 }
 
-export type ContainerDefinitionProps = {
+export interface ContainerDefinitionProps {
   name: string;
   cpu?: number;
   memoryLimitMiB?: number;
   memoryReservationMiB?: number;
   workingDirectory?: string;
   environment?: {
-    [key: string]: ssm.StringParameterAttributes;
+    ssmStringParameterAttributes?: {
+      [key: string]: ssm.StringParameterAttributes;
+    },
+    values?: {
+      [key: string]: string;
+    }
   };
   secrets?: {
-    [key: string]: ssm.SecureStringParameterAttributes;
+    ssmSecureStringParameterAttributes?: {
+      [key: string]: ssm.SecureStringParameterAttributes;
+    }
   };
   ecr: {
     repositoryName: string;
@@ -33,7 +40,7 @@ export type ContainerDefinitionProps = {
   portMappings: Array<ecs.PortMapping>;
 }
 
-export type EcsFargateTaskDefinitionProps = {
+export interface EcsFargateTaskDefinitionProps {
   taskDefinitionProps: TaskDefinitionProps;
   containerDefinitionPropsArray: Array<ContainerDefinitionProps>;
 }
@@ -70,14 +77,14 @@ export class EcsFargateTaskDefinition extends cdk.Construct {
       const ecrRepository = ecr.Repository.fromRepositoryName(scope, `${containerDefinitionProps.name}-EcrRepository`, containerDefinitionProps.ecr.repositoryName);
 
       let environment: {[key: string]: string} = {};
-      if (containerDefinitionProps.environment) {
-        for (let [key, parameter] of Object.entries(containerDefinitionProps.environment)) {
+      if (containerDefinitionProps.environment && containerDefinitionProps.environment.ssmStringParameterAttributes) {
+        for (let [key, parameter] of Object.entries(containerDefinitionProps.environment.ssmStringParameterAttributes)) {
           environment[key] = SsmParameterUtil.value(scope, parameter);
         }
       }
       let secrets: {[key: string]: ecs.Secret} = {};
-      if (containerDefinitionProps.secrets) {
-        for (let [key, parameter] of Object.entries(containerDefinitionProps.secrets)) {
+      if (containerDefinitionProps.secrets && containerDefinitionProps.secrets.ssmSecureStringParameterAttributes) {
+        for (let [key, parameter] of Object.entries(containerDefinitionProps.secrets.ssmSecureStringParameterAttributes)) {
           secrets[key] = SsmParameterUtil.ecsSecret(scope, parameter);
         }
       }

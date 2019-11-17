@@ -1,4 +1,5 @@
 import cdk = require('@aws-cdk/core');
+import { Aws } from '@aws-cdk/core';
 import ecr = require('@aws-cdk/aws-ecr');
 import ssm = require('@aws-cdk/aws-ssm');
 import s3 = require('@aws-cdk/aws-s3');
@@ -10,13 +11,13 @@ import iam = require('@aws-cdk/aws-iam');
 import { SecretManagerUtil, SecretManagerAttributes } from '../utils/secrets-manager';
 import { SsmParameterUtil } from '../utils/ssm-parameter';
 
-type Build = {
+interface Build {
   repositoryName: string;
   dockerfile: string;
   environment: codebuild.BuildEnvironment;
 }
 
-type PrepareDeploy = {
+interface PrepareDeploy {
   git: {
     owner: ssm.StringParameterAttributes;
     repo: ssm.StringParameterAttributes;
@@ -31,7 +32,7 @@ type PrepareDeploy = {
   environment: codebuild.BuildEnvironment;
 }
 
-type ApplicationCiEcrProps = cdk.StackProps & {
+interface ApplicationCiEcrProps extends cdk.StackProps {
   serviceName: string;
   source: {
     git: {
@@ -163,11 +164,11 @@ export class ApplicationCiEcrStack extends cdk.Stack {
         environmentVariables: {
           AWS_ACCOUNT_ID: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: this.node.tryGetContext('account')
+            value: Aws.ACCOUNT_ID
           },
           AWS_REGION: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: this.node.tryGetContext('region')
+            value: Aws.REGION
           },
           ENV: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
@@ -249,11 +250,11 @@ export class ApplicationCiEcrStack extends cdk.Stack {
         environmentVariables: {
           AWS_ACCOUNT_ID: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: this.node.tryGetContext('account')
+            value: Aws.ACCOUNT_ID
           },
           AWS_REGION: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,
-            value: this.node.tryGetContext('region')
+            value: Aws.REGION
           },
           ENV: {
             type: codebuild.BuildEnvironmentVariableType.PLAINTEXT,

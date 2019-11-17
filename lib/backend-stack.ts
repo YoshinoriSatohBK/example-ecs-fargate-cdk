@@ -9,7 +9,7 @@ import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
 import route53 = require('@aws-cdk/aws-route53');
 import targets = require('@aws-cdk/aws-route53-targets/lib');
 import rds = require('@aws-cdk/aws-rds');
-// import { Mysql } from './mysql';
+
 import {
   EcsFargateTaskDefinition,
   EcsFargateTaskDefinitionProps,

@@ -1,5 +1,8 @@
 # CDKによる ECS Fargate と CICD環境のサンプル
 
+本リポジトリの解説記事を以下で公開しています。
+[https://yoshinori-satoh.com/blog/2019-11-17-ecs-fargate-cicd-via-cdk/](https://yoshinori-satoh.com/blog/2019-11-17-ecs-fargate-cicd-via-cdk/)
+
 ## SSM Parameter 事前登録
 ### パラメータ定義ファイル作成
 `scripts/ssm-parameters-sample.json` を複製し、ファイル名を`scripts/ssm-parameters-dev.json` のように、sample部分を環境名にして、パラメータを記述。

@@ -65,11 +65,6 @@
     "Value": "Laravel"
   },
   {
-    "Type": "String",
-    "Name": "/Example/Dev/App/Laravel/Env/AppUrl",
-    "Value": "https://app-dev/yoshinori-satoh.com"
-  },
-  {
     "Type": "SecureString",
     "Name": "/Example/Dev/App/Laravel/Sec/AppKey",
     "Value": "base64:1B+4kHLo7Qwn+mSDD/f/Q1RsCwXztUikdb5j8gJ3hkw="

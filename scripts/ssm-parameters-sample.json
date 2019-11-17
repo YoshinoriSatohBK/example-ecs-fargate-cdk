@@ -64,11 +64,11 @@
     "Name": "/Example/$ENV/App/Laravel/Env/AppName",
     "Value": "AppName"
   },
-  {
-    "Type": "String",
-    "Name": "/Example/$ENV/App/Laravel/Env/AppUrl",
-    "Value": "AppUrl"
-  },
+  // {
+  //   "Type": "String",
+  //   "Name": "/Example/$ENV/App/Laravel/Env/AppUrl",
+  //   "Value": "AppUrl"
+  // },
   {
     "Type": "SecureString",
     "Name": "/Example/$ENV/App/Laravel/Sec/AppKey",

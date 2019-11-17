@@ -32,7 +32,7 @@ interface PrepareDeploy {
   environment: codebuild.BuildEnvironment;
 }
 
-interface ApplicationCiEcrProps extends cdk.StackProps {
+interface ApplicationCiEcrStackProps extends cdk.StackProps {
   serviceName: string;
   source: {
     git: {
@@ -47,7 +47,7 @@ interface ApplicationCiEcrProps extends cdk.StackProps {
 }
 
 export class ApplicationCiEcrStack extends cdk.Stack {
-  constructor(app: cdk.App, name: string, props: ApplicationCiEcrProps) {
+  constructor(app: cdk.App, name: string, props: ApplicationCiEcrStackProps) {
     super(app, name, props);
 
     const appName = this.node.tryGetContext('appName');

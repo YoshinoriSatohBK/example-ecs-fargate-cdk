@@ -23,7 +23,7 @@ import { EcsServiceCd, EcsServiceCdProps } from './ecs-service-cd';
 import { SecretManagerUtil, SecretManagerAttributes } from '../utils/secrets-manager';
 import { SsmParameterUtil } from '../utils/ssm-parameter';
 
-interface BackendProps extends cdk.StackProps {
+interface BackendStackProps extends cdk.StackProps {
   vpc: {
     cidr: string;
   },
@@ -63,7 +63,7 @@ interface BackendProps extends cdk.StackProps {
 }
 
 export class BackendStack extends cdk.Stack {
-  constructor(scope: cdk.App, name: string, props: BackendProps) {
+  constructor(scope: cdk.App, name: string, props: BackendStackProps) {
     super(scope, name, props);
 
     const appName = this.node.tryGetContext('appName');

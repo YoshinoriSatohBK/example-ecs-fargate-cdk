@@ -11,6 +11,7 @@ import changeCase = require('change-case');
 import { BackendStack } from '../../lib/backend-stack';
 import { ApplicationCiEcrStack } from '../../lib/application-ci-ecr-stack';
 
+// CDKアプリケーション with コンテキスト
 const app = new cdk.App({
   context: {
     appName: 'example'
@@ -18,13 +19,9 @@ const app = new cdk.App({
 });
 const appName = app.node.tryGetContext('appName');
 
-enum Env {
-  prod,
-  dev
-}
-const env:Env = app.node.tryGetContext('env') === 'prod' ? Env.prod : Env.dev;
-
-const servicesForEnv = env == Env.prod ? {
+// 環境名と各環境依存のプロパティ
+const env = app.node.tryGetContext('env')
+const servicesForEnv = env === 'prod' ? {
   cpu: 512,
   memoryLimitMiB: 1024,
 } : {
@@ -32,9 +29,11 @@ const servicesForEnv = env == Env.prod ? {
   memoryLimitMiB: 512,
 }
 
+// 登登録済みの SSM Parameter Store と Secrets managerのフィールド名リストを取得
 const parameters = require('./parameters.json');
 const secrets = require('./secrets.json');
 
+// バックエンドスタック作成
 const backend = new BackendStack(app, `${appName}-${env}`, {
   env: {
     account: Aws.ACCOUNT_ID,
@@ -123,6 +122,8 @@ const backend = new BackendStack(app, `${appName}-${env}`, {
   }
 });
 
+
+// アアアプリケーションCIスタック作成
 const serviceNameLaravel = 'laravel-app';
 new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
   env: {

@@ -112,7 +112,7 @@ export class BackendStack extends cdk.Stack {
       // ECS Fargate Service
       const fargateService = new ApplicationLoadBalancedFargateService(this, `${service.name}-FargateService`, {
         cluster: ecsCluster,
-        domainName: `${props.route53.subDomain}-${this.node.tryGetContext('env')}`,
+        domainName: props.route53.subDomain,
         domainZone: route53.HostedZone.fromHostedZoneAttributes(this, `${service.name}-FargateService-Domain`, {
           hostedZoneId: props.route53.hostedZoneId,
           zoneName: props.route53.domain

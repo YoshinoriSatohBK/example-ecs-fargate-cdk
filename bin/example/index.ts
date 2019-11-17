@@ -21,6 +21,11 @@ const appName = app.node.tryGetContext('appName');
 
 // 環境名と各環境依存のプロパティ
 const env = app.node.tryGetContext('env')
+const route53 = env === 'prod' ? {
+  subDomain: 'app'
+} : {
+  subDomain: `app-${env}`
+}
 const servicesForEnv = env === 'prod' ? {
   cpu: 512,
   memoryLimitMiB: 1024,
@@ -45,7 +50,7 @@ const backend = new BackendStack(app, `${appName}-${env}`, {
   route53: {
     hostedZoneId: 'Z3N49X3U5XDHKP',
     domain: 'yoshinori-satoh.net',
-    subDomain: 'app'
+    subDomain: route53.subDomain
   },
   acm: {
     certificateArn: `arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/42a4089e-8453-43cc-8b66-e206aad647a5`

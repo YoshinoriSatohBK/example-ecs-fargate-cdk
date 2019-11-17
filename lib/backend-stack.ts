@@ -92,20 +92,6 @@ export class BackendStack extends cdk.Stack {
       ],
     });
 
-    const dbCluster = new rds.DatabaseCluster(this, 'Database', {
-      engine: rds.DatabaseClusterEngine.AURORA,
-      masterUser: {
-        username: 'admin'
-      },
-      instanceProps: {
-        instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE2, ec2.InstanceSize.SMALL),
-        vpcSubnets: {
-          subnetType: ec2.SubnetType.ISOLATED,
-        },
-        vpc
-      }
-    });
-
     const ecsCluster = new ecs.Cluster(this, `EcsCluster`, {
       clusterName: `${appName}-${env}`,
       vpc

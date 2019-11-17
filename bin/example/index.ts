@@ -24,14 +24,6 @@ enum Env {
 }
 const env:Env = app.node.tryGetContext('env') === 'prod' ? Env.prod : Env.dev;
 
-const dbClusterForEnv = env == Env.prod ? {
-  instanceType: ec2.InstanceType.of(ec2.InstanceClass.MEMORY5, ec2.InstanceSize.LARGE),
-  instances: 2
-} : {
-  instanceType: ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.SMALL),
-  instances: 1
-}
-
 const servicesForEnv = env == Env.prod ? {
   cpu: 512,
   memoryLimitMiB: 1024,
@@ -58,24 +50,6 @@ const backend = new BackendStack(app, `${appName}-${env}`, {
   },
   acm: {
     certificateArn: `arn:aws:acm:${Aws.REGION}:${Aws.ACCOUNT_ID}:certificate/42a4089e-8453-43cc-8b66-e206aad647a5`
-  },
-// dbInstance: {
-  //   databaseName: string;
-  //   masterUsername: string;
-  // },
-  dbCluster: {
-    engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
-    engineVersion: '5.7.12',
-    instanceProps: {
-      instanceType: dbClusterForEnv.instanceType,
-      parameterGroup: {
-        family: 'aurora-mysql5.7'
-      }
-    },
-    instances: dbClusterForEnv.instances,
-    parameterGroup: {
-      family: 'aurora-mysql5.7'
-    }
   },
   services: [
     {

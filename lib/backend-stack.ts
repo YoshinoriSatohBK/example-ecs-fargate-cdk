@@ -1,27 +1,39 @@
 import cdk = require('@aws-cdk/core');
-import { Construct } from '@aws-cdk/core';
 import ec2 = require('@aws-cdk/aws-ec2');
 import ecs = require('@aws-cdk/aws-ecs');
-import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
-import { Certificate } from '@aws-cdk/aws-certificatemanager';
 import ssm = require('@aws-cdk/aws-ssm');
-import s3 = require('@aws-cdk/aws-s3');
-import kms = require('@aws-cdk/aws-kms');
 import elbv2 = require('@aws-cdk/aws-elasticloadbalancingv2');
+import { Certificate } from '@aws-cdk/aws-certificatemanager';
+import { ApplicationLoadBalancedFargateService } from '@aws-cdk/aws-ecs-patterns';
 import route53 = require('@aws-cdk/aws-route53');
-import targets = require('@aws-cdk/aws-route53-targets/lib');
-import rds = require('@aws-cdk/aws-rds');
-
 import {
   EcsFargateTaskDefinition,
-  EcsFargateTaskDefinitionProps,
   TaskDefinitionProps,
   ContainerDefinitionProps
 } from './ecs-fargate-task-definition';
-import { EcsServiceAlb } from './ecs-service-alb';
-import { EcsServiceCd, EcsServiceCdProps } from './ecs-service-cd';
+import { EcsServiceCd } from './ecs-service-cd';
 import { SecretManagerUtil, SecretManagerAttributes } from '../utils/secrets-manager';
 import { SsmParameterUtil } from '../utils/ssm-parameter';
+
+interface ServiceProps {
+  name: string;
+  targetPort: number;
+  listenerPort: number;
+  desiredCount: number;
+  assignPublicIp: boolean;
+  enableECSManagedTags: boolean;
+  minHealthyPercent: number;
+  maxHealthyPercent: number;
+  healthCheckGracePeriod: cdk.Duration;
+  cpu: number;
+  memoryLimitMiB: number;
+  taskDefinitionProps: TaskDefinitionProps;
+  containerDefinitionPropsArray: Array<ContainerDefinitionProps>;
+}
+
+interface AcmProps {
+  certificateArn: string;
+}
 
 interface BackendStackProps extends cdk.StackProps {
   vpc: {
@@ -32,26 +44,8 @@ interface BackendStackProps extends cdk.StackProps {
     domain: string;
     subDomain: string;
   },
-  acm: {
-    certificateArn: string;
-  },
-  services: [
-    {
-      name: string;
-      targetPort: number;
-      listenerPort: number;
-      desiredCount: number;
-      assignPublicIp: boolean;
-      enableECSManagedTags: boolean;
-      minHealthyPercent: number;
-      maxHealthyPercent: number;
-      healthCheckGracePeriod: cdk.Duration;
-      cpu: number;
-      memoryLimitMiB: number;
-      taskDefinitionProps: TaskDefinitionProps;
-      containerDefinitionPropsArray: Array<ContainerDefinitionProps>;
-    }
-  ],
+  acm: AcmProps;
+  services: Array<ServiceProps>;
   cd: {
     git: {
       owner: ssm.StringParameterAttributes;
@@ -63,13 +57,15 @@ interface BackendStackProps extends cdk.StackProps {
 }
 
 export class BackendStack extends cdk.Stack {
+  private vpc: ec2.IVpc;
+
   constructor(scope: cdk.App, name: string, props: BackendStackProps) {
     super(scope, name, props);
 
     const appName = this.node.tryGetContext('appName');
     const env = this.node.tryGetContext('env');
 
-    const vpc = new ec2.Vpc(this, `Vpc`, {
+    this.vpc = new ec2.Vpc(this, `Vpc`, {
       cidr: props.vpc.cidr,
       maxAzs: 2,
       subnetConfiguration: [
@@ -92,17 +88,11 @@ export class BackendStack extends cdk.Stack {
     });
 
     const ecsCluster = new ecs.Cluster(this, `EcsCluster`, {
-      vpc,
+      vpc: this.vpc,
       clusterName: `${appName}-${env}`
     });
 
     props.services.forEach(service => {
-      // ALB
-      const ecsServiceAlb = new EcsServiceAlb(this, `${service.name}-EcsServiceAlb`, {
-        vpc,
-        serviceName: service.name
-      })
-
       // ECS Fargate TaskDefinition
       const ecsFargateTaskDefinition = new EcsFargateTaskDefinition(this, `${service.name}-EcsFargateTaskDefinition`, {
         taskDefinitionProps: service.taskDefinitionProps,
@@ -118,7 +108,7 @@ export class BackendStack extends cdk.Stack {
           zoneName: props.route53.domain
         }),
         certificate: Certificate.fromCertificateArn(this, `${service.name}-FargateService-Certificate`, props.acm.certificateArn),
-        loadBalancer: ecsServiceAlb.alb,
+        //loadBalancer: ecsServiceAlb.alb,
         publicLoadBalancer: true,
         listenerPort: service.listenerPort,
         protocol: elbv2.ApplicationProtocol.HTTPS,
@@ -130,9 +120,11 @@ export class BackendStack extends cdk.Stack {
         desiredCount: service.desiredCount,
         enableECSManagedTags: service.enableECSManagedTags,
         // propagateTags
-        serviceName: service.name,
+        //serviceName: service.name,
         taskDefinition: ecsFargateTaskDefinition.taskDefinition
       })
+
+      this.setLbListener(service, fargateService)
 
       // ECS Service CD Pipeline
       new EcsServiceCd(this, `${service.name}-EcsServiceCd`, {
@@ -147,4 +139,69 @@ export class BackendStack extends cdk.Stack {
       });
     });
   }
+
+  private setLbListener(serviceProps: ServiceProps, fargateService: ApplicationLoadBalancedFargateService) {
+    const httpListener = fargateService.loadBalancer.addListener(`${serviceProps.name}-listener-http`, {
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      port: 80,
+      open: true,
+      defaultTargetGroups: []
+    });
+    httpListener.addRedirectResponse('ssl-redirect', {
+      statusCode: 'HTTP_302',
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      port: '443'
+    });
+
+    // 認証アクションがまだcfnリソースでしか提供されていない
+    new elbv2.CfnListenerRule(this, 'LoginListenerRule', {
+      conditions: [{
+        field: 'path-pattern',
+        values: ['/login']
+      }],
+      listenerArn: fargateService.listener.listenerArn,
+      priority: 10,
+      actions: [{
+        type: 'authenticate-cognito',
+        order: 1,
+        authenticateCognitoConfig: {
+          onUnauthenticatedRequest: 'authenticate',
+          userPoolArn: 'arn:aws:cognito-idp:ap-northeast-1:539459320497:userpool/ap-northeast-1_DCSnU6CvJ',
+          userPoolClientId: '49mk9h8g6mopge7coisn67mi34',
+          userPoolDomain: 'example-laravel'
+        }
+      }, {
+        type: 'redirect',
+        order: 2,
+        redirectConfig: {
+          statusCode: 'HTTP_302',
+          path: '/',
+          protocol: 'HTTPS'
+        }
+      }]
+    })
+    new elbv2.CfnListenerRule(this, 'ApiListenerRule', {
+      conditions: [{
+        field: 'path-pattern',
+        values: ['/api']
+      }],
+      listenerArn: fargateService.listener.listenerArn,
+      priority: 5,
+      actions: [{
+        type: 'authenticate-cognito',
+        order: 1,
+        authenticateCognitoConfig: {
+          onUnauthenticatedRequest: 'allow',
+          userPoolArn: 'arn:aws:cognito-idp:ap-northeast-1:539459320497:userpool/ap-northeast-1_DCSnU6CvJ',
+          userPoolClientId: '49mk9h8g6mopge7coisn67mi34',
+          userPoolDomain: 'example-laravel'
+        }
+      }, {
+        type: 'forward',
+        order: 2,
+        targetGroupArn: fargateService.targetGroup.targetGroupArn
+      }]
+    })
+  }
 }
+

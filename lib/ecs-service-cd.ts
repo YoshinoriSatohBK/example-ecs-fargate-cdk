@@ -7,7 +7,6 @@ import kms = require('@aws-cdk/aws-kms');
 import codepipeline = require('@aws-cdk/aws-codepipeline');
 import codepipeline_actions = require('@aws-cdk/aws-codepipeline-actions');
 import iam = require('@aws-cdk/aws-iam');
-import { GitHubSourceAction } from '@aws-cdk/aws-codepipeline-actions';
 
 export interface EcsServiceCdProps {
   git: {

@@ -2,12 +2,8 @@ import 'source-map-support/register';
 
 import cdk = require('@aws-cdk/core');
 import { Aws } from '@aws-cdk/core';
-import ec2 = require('@aws-cdk/aws-ec2');
 import ecs = require('@aws-cdk/aws-ecs');
-import rds = require('@aws-cdk/aws-rds');
 import codebuild = require('@aws-cdk/aws-codebuild');
-import ssm = require('@aws-cdk/aws-ssm');
-import changeCase = require('change-case');
 import { BackendStack } from '../../lib/backend-stack';
 import { ApplicationCiEcrStack } from '../../lib/application-ci-ecr-stack';
 
@@ -147,7 +143,7 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
   builds: [
     {
       repositoryName: `${serviceNameLaravel}-nginx`,
-      dockerfile: 'Dockerfile.nginx',
+      dockerfile: './docker/nginx/Dockerfile',
       environment: {
         buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,
         computeType: codebuild.ComputeType.SMALL,
@@ -156,7 +152,7 @@ new ApplicationCiEcrStack(app, `${appName}-${serviceNameLaravel}-${env}`, {
     },
     {
       repositoryName: serviceNameLaravel,
-      dockerfile: 'Dockerfile',
+      dockerfile: './docker/laravel/Dockerfile',
       environment: {
         buildImage: codebuild.LinuxBuildImage.STANDARD_2_0,
         computeType: codebuild.ComputeType.SMALL,
